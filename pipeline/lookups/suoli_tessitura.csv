@@ -1,0 +1,4 @@
+valore_er,texture_id,note,fonte
+# DA RIEMPIRE con i valori REALI dell'attributo tessitura della carta dei suoli ER (attributes.texture_attr in sources.toml). Nessun codice ER è stato inventato.
+# valore_er = valore esatto dell'attributo (maiuscole comprese). texture_id = una categoria di model/vth-v1.json param "texture": franco_argillosa franca franco_sabbioso_argillosa argillo_limosa franco_argillo_limosa argillosa franco_sabbiosa sabbio_argillosa franco_limosa sabbiosa sabbioso_franca limosa.
+# texture_id vuoto = non classificato (255). Il build scrive in data/build/<aoi>/da_classificare_texture.csv i valori trovati e non mappati, con la superficie.

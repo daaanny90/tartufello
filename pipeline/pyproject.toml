@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fiuto-pipeline"
+version = "0.1.0"
+description = "Pipeline dati di fiuto: score remoto VTH per il tartufo nero nell'Appennino parmense"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "rasterio>=1.4",
+    "geopandas>=1.0",
+    "pyogrio>=0.10",
+    "shapely>=2.0",
+    "pyproj>=3.6",
+    "pandas>=2.2",
+    "requests>=2.31",
+    "pmtiles>=3.4",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+fiuto-pipeline = "fiuto_pipeline.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["fiuto_pipeline*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

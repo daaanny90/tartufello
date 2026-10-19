@@ -4,3 +4,11 @@ app/dist/
 app/e2e/screenshots/
 *.tsbuildinfo
 .DS_Store
+
+# pipeline
+pipeline/.venv/
+pipeline/data/
+pipeline/*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/

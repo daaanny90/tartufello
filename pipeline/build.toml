@@ -1,0 +1,18 @@
+# Impostazioni del build (griglia, export).
+
+model = "../model/vth-v1.json"   # relativo a pipeline/
+
+[grid]
+crs = "EPSG:5659"   # CRS di lavoro (dati regionali)
+cell_size = 25      # metri, ammessi 20-25: i suoli sono al 50.000 (brief §5)
+
+[export]
+# Tile vettoriali MVT in EPSG:3857 (lo fa il driver). Con celle da 25 m:
+# z14 ~ 0.4 m per unità di tile a 44.7°N (dettaglio pieno), z8 ~ 27 m.
+minzoom = 8
+maxzoom = 14
+# Semplificazione del driver MVT di GDAL, in unità di tile (1/4096 del lato).
+# 1.0 = ~27 m a z8, ~1.7 m a z12, ~0.4 m a z14: sotto la cella ai livelli alti.
+simplification = 1.0
+# simplification_max_zoom = 0.5   # se si vuole un valore diverso a maxzoom
+verify_max_tiles = 300  # tile controllati contro il contratto dopo la scrittura

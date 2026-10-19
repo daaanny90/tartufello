@@ -1,0 +1,23 @@
+# Aree di interesse (AOI) per fetch e build.
+#
+# Tre modi di definirle (uno per AOI):
+#   bbox = [minx, miny, maxx, maxy] con crs = "EPSG:4326" (lon/lat)
+#   bbox = [...] con crs = "EPSG:5659" (metri, Monte Mario / TM Emilia-Romagna)
+#   path = "file locale" (GeoJSON/GPKG, relativo a pipeline/), layer facoltativo:
+#          il build calcola solo dentro il poligono.
+#
+# Il confine provinciale vero non è disponibile qui: le due AOI sotto sono
+# rettangoli SCRITTI A MANO, approssimativi, da sostituire con il confine
+# ufficiale (es. path = "data/aoi/provincia_parma.gpkg") appena scaricato.
+
+[aoi.parma_approx]
+description = "Provincia di Parma, bbox APPROSSIMATIVO scritto a mano (include pezzi delle province vicine). Da sostituire."
+approximate = true
+crs = "EPSG:4326"
+bbox = [9.40, 44.35, 10.50, 45.10]
+
+[aoi.val_baganza_approx]
+description = "Val Baganza (spike Fase 0), bbox APPROSSIMATIVO scritto a mano. Da sostituire."
+approximate = true
+crs = "EPSG:4326"
+bbox = [9.95, 44.48, 10.30, 44.75]

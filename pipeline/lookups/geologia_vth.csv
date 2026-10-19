@@ -1,0 +1,4 @@
+unit_code,unit_name,vth_class,note,fonte
+# DA RIEMPIRE a mano e con prudenza (BRIEF §9.3): unità della carta geologica ER (attributes.unit_code_attr) -> classe roccia madre VTH. Nessun codice ER è stato inventato.
+# vth_class = calcari | marne | dolomie | senza_calcio (categorie di model/vth-v1.json param "bedrock"). Vuoto = non classificata (255).
+# fonte = da dove viene la decisione (note illustrative del foglio, legenda, ecc.). Il build scrive data/build/<aoi>/da_classificare_bedrock.csv con le unità mancanti ordinate per superficie in bosco.

@@ -230,7 +230,7 @@
     "note": "Contratto tra pipeline ed app per il PMTiles vettoriale dello score remoto.",
     "layer": "vth",
     "properties": {
-      "score": "float 0..1 (3 decimali). Assente se i parametri disponibili sono meno di remote.minParams.",
+      "score": "float 0..1, arrotondato a 3 decimali per eccesso a metà (0.3125 -> 0.313). Assente se i parametri disponibili sono meno di remote.minParams. 0 e 1 possono arrivare come interi: non controllare il tipo.",
       "pts": "int, somma dei punti dei parametri remoti disponibili",
       "max": "int, somma dei massimi remoti dei parametri disponibili",
       "n": "int, numero di parametri remoti disponibili",
@@ -242,6 +242,6 @@
       "forest_type": "int 0..3, assente se non disponibile",
       "hosts": "int 0..1, assente se non disponibile"
     },
-    "metadata": "Nel metadata JSON del PMTiles: model (id del modello), built (ISO 8601), aoi, sources (elenco con stato di verifica)."
+    "metadata": "Nel metadata JSON del PMTiles: model (id del modello), built (ISO 8601), aoi (stringa), sources (lista di {id, status, verified, params}). Chiavi in più ammesse: mask, cell_size_m, generator, warning, synthetic (true = dati di test)."
   }
 }

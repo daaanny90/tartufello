@@ -1,0 +1,231 @@
+# Sorgenti dati di fiuto (BRIEF.md §5).
+#
+# Regole:
+# - Endpoint SOLO come scritti nel brief. Tutto il resto resta vuoto ("") finché
+#   non è verificato: la pipeline si rifiuta di indovinare.
+# - status: "da verificare" | "ok" | "non trovato". Si passa a "ok" solo dopo
+#   aver controllato davvero (capabilities, download, attributi), e l'esito va
+#   scritto anche in BRIEF.md con URL e data (vedi CLAUDE.md).
+# - local_path: file (o cartella di raster) scaricato a mano; relativo a pipeline/.
+#   Se vuoto, il build usa l'ultimo `fetch` in data/raw/<id>/.
+# - [*.service]: identificativi per scaricare da WFS/WCS (da `capabilities`).
+# - [*.attributes]: nomi di layer e attributi che servono al derive.
+#
+# Fase 0: `python -m fiuto_pipeline info` mostra cosa manca.
+
+[defaults]
+crs = "EPSG:5659"   # Monte Mario / TM Emilia-Romagna, CRS dei dati regionali (brief §5)
+
+# ---------------------------------------------------------------------------
+[sources.dtm]
+title = "DTM 5x5 (ed. 2014)"
+use = "quota (in futuro pendenza e TPI)"
+params = ["elevation"]
+status = "da verificare"
+status_note = "endpoint da metadati INSPIRE, non ancora interrogati"
+license = "da verificare (attesa CC BY)"
+crs = "EPSG:5659"
+local_path = ""
+
+[sources.dtm.endpoints]
+wcs = "https://servizigis.regione.emilia-romagna.it/wcs/dtm10k_ed2014"
+# Nel brief è scritto ".../wms/dtm10k_ed2014": stessa base del WCS.
+wms = "https://servizigis.regione.emilia-romagna.it/wms/dtm10k_ed2014"
+metadata = "https://inspire-geoportal.ec.europa.eu/srv/api/records/r_emiro:2016-08-08T155835"
+
+[sources.dtm.service]
+wcs_coverage_id = ""    # da `capabilities dtm` (elenco Coverage)
+wcs_axis_x = ""         # etichetta asse est da DescribeCoverage (axisLabels)
+wcs_axis_y = ""         # etichetta asse nord da DescribeCoverage (axisLabels)
+wcs_format = ""         # un formato GeoTIFF tra quelli elencati da capabilities
+wcs_tile_size_m = 5000  # lato dei riquadri GetCoverage (5 km = 1000x1000 px a 5 m)
+
+[sources.dtm.attributes]
+band = 1
+
+# ---------------------------------------------------------------------------
+[sources.dem10]
+title = "DEM 10x10 (usato dalla CAPP)"
+use = "alternativa più leggera al DTM 5x5 per la quota"
+params = ["elevation"]
+status = "da verificare"
+status_note = "link dalle note CAPP; è una pagina di download, non un file"
+license = "da verificare (attesa CC BY)"
+crs = "EPSG:5659"
+local_path = ""     # file o cartella di tile estratti dallo zip
+
+[sources.dem10.endpoints]
+page = "http://geoportale.regione.emilia-romagna.it/it/download/prodottiraster"
+download = ""       # link diretto al file: da verificare sulla pagina sopra
+
+[sources.dem10.attributes]
+band = 1
+
+# ---------------------------------------------------------------------------
+[sources.suoli]
+title = "Carta dei suoli 1:50.000 (2018, 71% della regione) + 1:250.000 (tutta)"
+use = "tessitura, CaCO3 (se c'è), drenaggio"
+params = ["texture", "caco3"]
+status = "da verificare"
+status_note = "attributi esatti da verificare; CaCO3 da verificare se c'è come attributo/layer"
+license = "da verificare (attesa CC BY)"
+crs = "EPSG:5659"
+local_path = ""
+
+[sources.suoli.endpoints]
+wms = "https://servizigis.regione.emilia-romagna.it/wms/suoli"
+webgis = "https://geo.regione.emilia-romagna.it/cartpedo/"
+catalogo = "https://mappegis.regione.emilia-romagna.it/gstatico/documenti/dati_pedol/Catalogo_suoli_RER.pdf"  # stato ok nel brief
+wfs = ""            # non nel brief: da verificare se esiste
+download = ""       # non nel brief: da verificare
+
+[sources.suoli.service]
+wfs_typename = ""
+wfs_version = "2.0.0"
+wfs_output_format = ""   # vuoto = formato di default del server (GML)
+
+[sources.suoli.attributes]
+layer = ""          # layer nel file locale (vuoto va bene se ce n'è uno solo)
+texture_attr = ""   # attributo tessitura; i suoi valori vanno mappati in lookups/suoli_tessitura.csv
+caco3_attr = ""     # attributo NUMERICO CaCO3 in %, se esiste (se è a classi serve un'altra strada)
+
+# ---------------------------------------------------------------------------
+[sources.ph]
+title = "Carta del pH dei suoli 0-30 cm"
+use = "pH"
+params = ["ph"]
+status = "da verificare"
+status_note = "download da verificare (le note descrivono la consultazione su MokaSuoli e geoportale)"
+license = "da verificare (attesa CC BY)"
+crs = "EPSG:5659"
+local_path = ""     # raster o vettore
+
+[sources.ph.endpoints]
+note = "https://mappegis.regione.emilia-romagna.it/gstatico/documenti/dati_pedol/pH_0_30.pdf"
+download = ""       # da verificare
+
+[sources.ph.attributes]
+layer = ""          # solo per dati vettoriali
+ph_attr = ""        # solo per dati vettoriali: attributo numerico del pH
+band = 1            # solo per raster
+value_scale = 1.0   # 1.0 = valori già in unità di pH; da verificare sul dato (es. 0.1 se in decimi)
+
+# ---------------------------------------------------------------------------
+[sources.geologia]
+title = "Carta geologica 1:50.000"
+use = "roccia madre"
+params = ["bedrock"]
+status = "da verificare"
+status_note = "layer litologie da verificare; esiste anche la 1:10.000"
+license = "da verificare (attesa CC BY)"
+crs = "EPSG:5659"
+local_path = ""
+
+[sources.geologia.endpoints]
+wms = "https://servizigis.regione.emilia-romagna.it/wms/geologia50k"
+webgis = "https://servizimoka.regione.emilia-romagna.it/mokaApp/applicazioni/geo"
+wfs = ""            # non nel brief: da verificare se esiste
+download = ""       # non nel brief: da verificare
+
+[sources.geologia.service]
+wfs_typename = ""
+wfs_version = "2.0.0"
+wfs_output_format = ""
+
+[sources.geologia.attributes]
+layer = ""
+unit_code_attr = "" # codice dell'unità geologica: chiave di lookups/geologia_vth.csv
+unit_name_attr = "" # facoltativo: nome/descrizione dell'unità, solo per i report
+
+# ---------------------------------------------------------------------------
+[sources.forestale]
+title = "Carta forestale regionale 1:10.000"
+use = "maschera bosco, tipo di bosco, specie dominanti (ospiti)"
+params = ["forest_type", "hosts"]
+status = "da verificare"
+status_note = "download/WMS da verificare; pagina 'cartografia interattiva foreste' su ambiente.regione.emilia-romagna.it/it/parchi-natura2000/foreste/... (URL completo da ritrovare)"
+license = "da verificare (attesa CC BY)"
+crs = "EPSG:5659"
+local_path = ""
+
+[sources.forestale.endpoints]
+wms = ""
+wfs = ""
+download = ""
+
+[sources.forestale.service]
+wfs_typename = ""
+wfs_version = "2.0.0"
+wfs_output_format = ""
+
+[sources.forestale.attributes]
+layer = ""
+forest_type_attr = ""      # tipo forestale ER: chiave di lookups/forestale_vth.csv
+forest_type_name_attr = "" # facoltativo: descrizione del tipo, solo per i report
+mask_where = ""            # facoltativo: filtro SQL se il layer contiene anche poligoni non boscati
+
+# ---------------------------------------------------------------------------
+[sources.vegetazione]
+title = "Carta della vegetazione"
+use = "supporto per gli ospiti (non ancora usata nello score)"
+params = []
+status = "da verificare"
+status_note = "copertura probabilmente parziale"
+license = "da verificare (attesa CC BY)"
+crs = "EPSG:5659"
+local_path = ""
+
+[sources.vegetazione.endpoints]
+wms = "http://servizigis.regione.emilia-romagna.it/wms/carta_della_vegetazione"
+# Il brief dice "WMS/WFS" su questo URL: da verificare se risponde anche a SERVICE=WFS.
+wfs = "http://servizigis.regione.emilia-romagna.it/wms/carta_della_vegetazione"
+
+[sources.vegetazione.service]
+wfs_typename = ""
+wfs_version = "2.0.0"
+wfs_output_format = ""
+
+# ---------------------------------------------------------------------------
+[sources.erg5]
+title = "ERG5 Arpae (griglia 5 km)"
+use = "continentalità, stress idrico (feature candidate, non nello score)"
+params = []
+status = "da verificare"
+status_note = "portale dati Arpae: URL da trovare"
+license = "da verificare"
+crs = ""            # da verificare
+local_path = ""
+
+[sources.erg5.endpoints]
+download = ""
+
+# ---------------------------------------------------------------------------
+[sources.capp]
+title = "CAPP Tuber magnatum (carta regionale del bianco)"
+use = "layer informativo separato nell'app"
+params = []
+status = "non trovato"
+status_note = "download/WMS non trovato: chiedere alla Regione; webgis a risoluzione ridotta"
+license = "da verificare"
+crs = "EPSG:5659"
+local_path = ""
+
+[sources.capp.endpoints]
+webgis = "https://agri.regione.emilia-romagna.it/MotoreGis/TemiAgricoli/gis.html"
+note = "https://agricoltura.regione.emilia-romagna.it/tartufi/pubblicazioni/note-illustrative-tuber-magnatum_marzo-_2026.pdf/@@download/file"
+
+# ---------------------------------------------------------------------------
+[sources.aree_protette]
+title = "Confini parchi e Natura 2000"
+use = "regole di raccolta (L.R. 24/1991 art. 15 e 21): avviso nell'app, non nello score"
+params = []
+status = "da verificare"
+status_note = "layer dal geoportale da trovare"
+license = "da verificare"
+crs = "EPSG:5659"
+local_path = ""
+
+[sources.aree_protette.endpoints]
+wms = ""
+wfs = ""
+download = ""

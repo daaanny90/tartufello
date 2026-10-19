@@ -1,0 +1,5 @@
+tipo_er,tipo_er_nome,forest_class,hosts,note,fonte
+# DA RIEMPIRE: tipo forestale della carta forestale ER (attributes.forest_type_attr) -> classe VTH e ospiti. Nessun codice ER è stato inventato.
+# forest_class = latifoglie_fresche | misti_freschi | umidi | altri (model/vth-v1.json param "forest_type"). Vuoto = non classificato (255).
+# hosts = 1 se il tipo ha almeno una specie ospite nello strato arboreo (lista hostSpecies del modello, con Ostrya), 0 se nessuna; vuoto = non classificato. Da remoto il massimo è 1 (remote.max).
+# Il build scrive data/build/<aoi>/da_classificare_forest_type.csv (e _hosts) con i tipi mancanti ordinati per superficie.
