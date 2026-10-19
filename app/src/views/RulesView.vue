@@ -1,0 +1,68 @@
+<script setup lang="ts">
+import { RouterLink } from 'vue-router'
+import { model } from '../field/model'
+import { calendar, formatMmdd, seasonLabel } from '../rules/calendar'
+</script>
+
+<template>
+  <div class="page">
+    <RouterLink to="/impostazioni" class="small">← Altro</RouterLink>
+    <h1 style="margin-top: 8px">Regole</h1>
+
+    <div v-if="!calendar.verified" class="banner warn small">
+      {{ calendar.verificationNote }} Fonte: <a :href="calendar.source" target="_blank" rel="noopener">delibera</a>.
+    </div>
+
+    <section class="card">
+      <h2>{{ calendar.title }}</h2>
+      <p class="small muted">{{ calendar.legalBasis }}</p>
+      <table>
+        <thead>
+          <tr><th>Specie</th><th>Periodo</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="s in calendar.species" :key="s.id">
+            <td>
+              <strong>{{ s.common }}</strong>
+              <div class="small muted"><i>{{ s.latin }}</i></div>
+            </td>
+            <td class="small">{{ seasonLabel(s) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3 style="margin-top: 14px">Sospensione totale</h3>
+      <ul>
+        <li v-for="s in calendar.suspensions" :key="s.from">{{ formatMmdd(s.from) }} - {{ formatMmdd(s.to) }}</li>
+      </ul>
+      <p class="small muted">{{ calendar.zonesNote }}</p>
+    </section>
+
+    <section class="card">
+      <h2>Cosa serve</h2>
+      <div v-for="r in calendar.requirements" :key="r.id" style="margin-bottom: 10px">
+        <strong>{{ r.title }}</strong>
+        <div>{{ r.text }}</div>
+        <div class="small muted">{{ r.ref }}</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Il modello</h2>
+      <p>{{ model.title }}.</p>
+      <p class="small">
+        {{ model.source.citation }},
+        <a :href="`https://doi.org/${model.source.doi}`" target="_blank" rel="noopener">doi:{{ model.source.doi }}</a> ({{ model.source.license }}).
+      </p>
+      <p class="small">
+        12 parametri da 0 a 3 punti, massimo 36. Classi:
+        <span v-for="c in model.classes" :key="c.id" class="row" style="display: inline-flex; gap: 4px; margin-right: 8px">
+          <span class="swatch" :style="{ background: c.color }" />{{ c.label }} da {{ c.min36 }}
+        </span>
+      </p>
+      <p class="small muted">
+        Lo score remoto usa solo i parametri leggibili da dati regionali, normalizzati sul massimo ottenibile. Sotto
+        {{ model.remote.minParams }} parametri disponibili non viene calcolato. La mappa restringe le zone, l'ultimo metro lo fa il cane.
+      </p>
+    </section>
+  </div>
+</template>

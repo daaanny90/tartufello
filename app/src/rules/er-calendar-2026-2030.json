@@ -1,0 +1,100 @@
+{
+  "id": "er-calendar-2026-2030",
+  "title": "Calendario di raccolta tartufi Emilia-Romagna 2026-2030",
+  "legalBasis": "L.R. 24/1991 art. 13; DGR n. 137 del 02/02/2026",
+  "source": "https://agricoltura.regione.emilia-romagna.it/tartufi/raccolta/calendari/calendario-tartufi-e-r/@@download/file",
+  "transcribedFrom": "BRIEF.md, 19/10/2026",
+  "verified": false,
+  "verificationNote": "Trascritto dal brief, non ancora confrontato con il PDF della delibera.",
+  "validYears": { "from": 2026, "to": 2030 },
+  "zones": [
+    { "id": "collina", "label": "Collina" },
+    { "id": "pianura", "label": "Pianura" }
+  ],
+  "zonesNote": "Il calendario distingue pianura e collina solo per lo scorzone estivo. Come ricade la montagna va verificato sul testo della delibera [da verificare].",
+  "species": [
+    {
+      "id": "uncinatum",
+      "latin": "Tuber uncinatum (= T. aestivum)",
+      "common": "Nero di Fragno, scorzone autunnale",
+      "target": true,
+      "seasons": [{ "from": "10-01", "to": "01-31" }]
+    },
+    {
+      "id": "aestivum",
+      "latin": "Tuber aestivum",
+      "common": "Scorzone estivo",
+      "target": true,
+      "seasons": [
+        { "from": "06-01", "to": "07-31", "zones": ["pianura"] },
+        { "from": "06-01", "to": "08-15", "zones": ["collina"] }
+      ]
+    },
+    {
+      "id": "magnatum",
+      "latin": "Tuber magnatum",
+      "common": "Bianco pregiato",
+      "seasons": [{ "from": "10-01", "to": "01-20" }]
+    },
+    {
+      "id": "melanosporum",
+      "latin": "Tuber melanosporum",
+      "common": "Nero pregiato",
+      "seasons": [{ "from": "11-01", "to": "03-31" }]
+    },
+    {
+      "id": "brumale",
+      "latin": "Tuber brumale (e var. moschatum)",
+      "common": "Brumale",
+      "seasons": [{ "from": "12-01", "to": "04-30" }]
+    },
+    {
+      "id": "borchii",
+      "latin": "Tuber borchii (= T. albidum)",
+      "common": "Bianchetto",
+      "seasons": [{ "from": "12-01", "to": "04-30" }]
+    },
+    {
+      "id": "macrosporum",
+      "latin": "Tuber macrosporum",
+      "common": "Nero liscio",
+      "seasons": [{ "from": "10-01", "to": "01-20" }]
+    },
+    {
+      "id": "mesentericum",
+      "latin": "Tuber mesentericum",
+      "common": "Nero ordinario",
+      "seasons": [{ "from": "10-01", "to": "01-20" }]
+    }
+  ],
+  "suspensions": [
+    { "from": "05-01", "to": "05-31", "label": "Sospensione totale di ricerca e raccolta" },
+    { "from": "08-16", "to": "09-30", "label": "Sospensione totale di ricerca e raccolta" }
+  ],
+  "requirements": [
+    {
+      "id": "tesserino",
+      "title": "Tesserino di idoneità",
+      "text": "Serve per cercare e raccogliere.",
+      "ref": "L.R. 24/1991, art. 8"
+    },
+    {
+      "id": "tassa",
+      "title": "Tassa di concessione annuale",
+      "text": "Da pagare ogni anno oltre al tesserino.",
+      "ref": "L.R. 24/1991, art. 11"
+    },
+    {
+      "id": "tartufaie",
+      "title": "Tartufaie coltivate o controllate",
+      "text": "Con la tabella regionale di raccolta riservata sono off-limits. Non c'è un layer centrale: segnale sul campo come spot 'riservato'.",
+      "ref": "Tabella regionale tartufaia coltivata"
+    },
+    {
+      "id": "aree_protette",
+      "title": "Aree protette",
+      "text": "Nei parchi valgono regolamenti propri. Confini parchi e Natura 2000 non ancora in mappa [da verificare].",
+      "ref": "L.R. 24/1991, art. 15 e 21; regolamenti dei parchi"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# app
+app/node_modules/
+app/dist/
+app/e2e/screenshots/
+*.tsbuildinfo
+.DS_Store

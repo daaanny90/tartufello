@@ -214,3 +214,18 @@ interface Find {
 - Thomas 2013, Acta Mycologica, pH e micorrize di T. aestivum (ottimo osservato 7,51): https://doi.org/10.5586/am.2012.019
 - Tabella regionale "tartufaia coltivata, raccolta riservata": https://agricoltura.regione.emilia-romagna.it/tartufi/tartuficoltura/tabelle/tabella-tartufaia-coltivata.pdf
 - Metadati DTM 5x5 ER: https://inspire-geoportal.ec.europa.eu/srv/api/records/r_emiro:2016-08-08T155835
+
+## 11. Decisioni di implementazione (19 ottobre 2026)
+
+Prese costruendo la prima versione. Dove si discostano dal resto del brief, valgono queste finché non si decide altrimenti.
+
+- **Modello come dati condivisi.** Parametri, soglie, classi, specie ospiti e contratto dei tile stanno in `model/vth-v1.json`, letto sia dalla pipeline sia dall'app. Cambiare una soglia = nuova versione del modello.
+- **Soglie VTH come regole ordinate.** Vince la prima che corrisponde; i buchi tra gli intervalli del paper (pH 7,1-7,2, quota 1000) si chiudono con intervalli semiaperti.
+- **Ospiti da remoto: massimo 1 punto.** Dalla carta forestale si vede solo lo strato arboreo, non il nocciolo, quindi da remoto vale solo la regola "≥ 1 specie". Lo score remoto si normalizza su questo massimo, come chiede §4.3.
+- **Soglie minime (scelte di progetto, non del paper).** Score remoto solo con almeno 4 parametri disponibili; classe sul posto provvisoria sotto 8 parametri. Senza queste, pochi parametri al massimo davano "Alta" con 5 dati su 11.
+- **Effervescenza → CaCO3.** Euristica prudente sulle classi FAO 2006 (nessuna 0, udibile 1, visibile 2, forte 3 punti). **[da verificare]** sul campo.
+- **Score remoto vettoriale, non raster.** La pipeline lavora su griglia a 25 m, poi poligonizza per combinazione di punteggi e scrive un PMTiles vettoriale (layer `vth`) con i punti di ogni parametro. In app si colora per classe o per singolo parametro e si interroga in un punto, anche senza mappa a schermo.
+- **Mappe come file nel telefono.** Score e basemap offline si importano come `.pmtiles` e restano in IndexedDB; si leggono a pezzi con `FileSource`. Niente range request da cachare nel service worker.
+- **Traccia come punti con tempo e precisione** (`TrackPoint[]`), non `GeoJSON.LineString`: serve per la calibrazione e si converte quando occorre.
+- **Spot "riservato"** per le tartufaie con tabella: è la segnalazione manuale prevista in §3.
+- **Rete dall'ambiente cloud di sviluppo.** I domini `*.regione.emilia-romagna.it` sono bloccati dal proxy dell'ambiente: la Fase 0 (verifica dei dati) va fatta da un computer normale o dopo aver aggiunto quei domini alla rete dell'ambiente. Il calendario in app è trascritto da questo brief e segnato come non verificato sul PDF della delibera.
