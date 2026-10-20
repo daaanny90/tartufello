@@ -21,7 +21,7 @@ App: https://daaanny90.github.io/tartufello/ (Chrome su Android: menu → Instal
 ## Limiti da sapere
 
 - **La traccia si registra con lo schermo acceso.** L'app tiene lo schermo acceso durante l'uscita; se lo blocchi, il browser può fermare il GPS.
-- **Lo score è una bozza.** Da remoto la Val Baganza esce quasi tutta "alta": per ora la mappa dice dove ha senso andare, non dove scavare. Le tue valutazioni sul posto sono il dato che manca.
+- **Lo score è una bozza.** Da remoto la Val Baganza esce quasi tutta "alta": per ora la mappa dice dove ha senso andare, non dove scavare. Fidati di più del rosso e del giallo (dove non andare) e della checklist. Le tue valutazioni sul posto sono il dato che manca. Spiegazione completa nel [README](README.md#come-leggere-la-mappa-e-quanto-fidarsi).
 - **Aree faunistiche e parchi non sono in mappa.** Da febbraio a giugno, in oasi, zone di rifugio, ZRC e aziende faunistico-venatorie è vietato: guarda i cartelli.
 
 ## Dopo
