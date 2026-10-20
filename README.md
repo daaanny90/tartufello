@@ -1,5 +1,7 @@
 # fiuto
 
+**App:** https://daaanny90.github.io/tartufello/ (da Chrome su Android: menu → Installa app)
+
 App personale per decidere **dove portare il cane a cercare tartufo nero** (*Tuber aestivum* / *uncinatum*) nell'Appennino parmense. Il perché, il modello e i dati sono in [`BRIEF.md`](BRIEF.md).
 
 - [`model/vth-v1.json`](model/vth-v1.json): il modello Virtual Truffle Hunting adattato, condiviso da pipeline e app.
