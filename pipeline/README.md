@@ -1,6 +1,6 @@
 # pipeline/ - dati regionali -> score remoto VTH -> PMTiles
 
-Calcola lo **score remoto VTH** (BRIEF §4.3) su una griglia da 25 m in EPSG:5659 e lo esporta come PMTiles vettoriale (layer `vth`) per l'app. Soglie, categorie, massimi e contratto dei tile stanno **solo** in `../model/vth-v1.json`.
+Calcola lo **score remoto VTH** (BRIEF §4.3) su una griglia da 25 m in EPSG:5659 e lo esporta come PMTiles vettoriale (layer `vth`) per l'app. Soglie, categorie, massimi e contratto dei tile stanno **solo** nel modello indicato da `build.toml` (oggi `../model/vth-v2.json`; `vth-v1.json` resta leggibile). I parametri derivati che il modello non elenca come remoti (con v2 gli ospiti) vengono ignorati dal build: niente score, tile o report per loro.
 
 Regola di casa: niente endpoint, layer, attributi o codici inventati. Quello che non è verificato resta vuoto in `sources.toml` con stato `da verificare`, e la pipeline si rifiuta di partire dicendo cosa controllare.
 
@@ -74,13 +74,13 @@ Esiti, URL, licenze e decisioni aperte sono in **[FASE0.md](FASE0.md)**. In brev
 
 Note pratiche emerse in Fase 0:
 - WCS di ArcGIS Server: spesso solo 1.0.0-1.1.x. In `[*.service]`: `wcs_version = "1.0.0"`, `wcs_res`, e `crs` = CRS nativo della coverage. Un tile a più bande (RGB/RGBA) viene rifiutato: è un'immagine, non valori. Se il GeoTIFF non dichiara il nodata, usa `attributes.nodata`.
-- Carta forestale: ospiti dalle specie prevalenti con `hosts_attrs = ["PRIMA_SP", "SECONDA_SP"]` e `lookups/forestale_specie.csv`; ospite se almeno una specie lo è, 0 solo se tutte sono note e non ospiti.
+- Carta forestale: ospiti dalle specie prevalenti con `hosts_attrs = ["PRIMA_SP", "SECONDA_SP"]` e `lookups/forestale_specie.csv`; ospite se almeno una specie lo è, 0 solo se tutte sono note e non ospiti. Con vth-v2 gli ospiti non sono più nello score remoto (si valutano sul posto): il calcolo resta, ma il build lo ignora.
 - Carta dei suoli: i poligoni non hanno proprietà; `prepare suoli` le ricava dall'Excel del pacchetto (suolo prevalente, profilo rappresentativo, media pesata 0-30 cm, triangolo USDA). Nomi di fogli e colonne in `[sources.suoli.prepare]`.
 - Righe di lookup con nota "BOZZA" finiscono nel `warning` del metadata PMTiles e in `report.json` (`lookup_bozza`).
 
 ## Score
 
-Per ogni cella nella maschera bosco: `pts` = somma dei punti dei parametri remoti disponibili, `max` = somma dei loro massimi remoti dal modello (ospiti: 1), `n` = quanti sono. `score = pts / max` solo se `n >= remote.minParams` (4), arrotondato a 3 decimali per eccesso a metà (0,3125 -> 0,313). I valori numerici si confrontano dopo un arrotondamento a 6 decimali, così 7,2 salvato in float32 (7,1999998) non perde il punto.
+Per ogni cella nella maschera bosco: `pts` = somma dei punti dei parametri remoti disponibili, `max` = somma dei loro massimi remoti dal modello (con vth-v1 gli ospiti valgono al massimo 1; con vth-v2 sono fuori), `n` = quanti sono. `score = pts / max` solo se `n >= remote.minParams` (4), arrotondato a 3 decimali per eccesso a metà (0,3125 -> 0,313). I valori numerici si confrontano dopo un arrotondamento a 6 decimali, così 7,2 salvato in float32 (7,1999998) non perde il punto.
 
 ## Tile
 

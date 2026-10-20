@@ -27,7 +27,7 @@ from fiuto_pipeline.grid import Grid
 from fiuto_pipeline.model import NA
 
 META = {
-    "model": "vth-v1",
+    "model": "vth-v2",
     "built": "2026-01-01T00:00:00+00:00",
     "aoi": "test-sintetico",
     "sources": [{"id": "sint", "status": "sintetico"}],
@@ -40,13 +40,13 @@ def tiny(model):
     g = Grid.from_bounds((579_000, 939_000, 579_150, 939_100), "EPSG:5659", 25.0)
     assert g.shape == (4, 6)
     p = {pid: np.full(g.shape, NA, dtype="uint8") for pid in model.remote_params()}
-    # zona A (colonne 0-1): 5 parametri -> score
-    for pid, v in (("bedrock", 3), ("ph", 2), ("texture", 3), ("elevation", 3), ("hosts", 1)):
+    # zona A (colonne 0-1): 4 parametri -> score
+    for pid, v in (("bedrock", 3), ("ph", 2), ("texture", 3), ("elevation", 3)):
         p[pid][:, 0:2] = v
     # zona B (colonne 2-3): 3 parametri -> niente score
     for pid, v in (("ph", 1), ("elevation", 2), ("forest_type", 0)):
         p[pid][:, 2:4] = v
-    # zona C (colonne 4-5): tutti i 7 parametri
+    # zona C (colonne 4-5): tutti i 6 parametri remoti di vth-v2
     for pid, v in (
         ("bedrock", 0),
         ("ph", 0),
@@ -54,7 +54,6 @@ def tiny(model):
         ("texture", 2),
         ("elevation", 1),
         ("forest_type", 3),
-        ("hosts", 0),
     ):
         p[pid][:, 4:6] = v
     mask = np.ones(g.shape, dtype=bool)
@@ -76,10 +75,11 @@ def test_polygonize_properties(model, tiny):
     gdf = polygonize(p, mask, g, model)
     assert len(gdf) == 3
     rows = {int(r["n"]): r for r in gdf.drop(columns="geometry").to_dict("records")}
-    a, b, c = rows[5], rows[3], rows[7]
-    assert a["pts"] == 12 and a["max"] == 13 and a["score"] == pytest.approx(0.923)
+    a, b, c = rows[4], rows[3], rows[6]
+    assert a["pts"] == 11 and a["max"] == 12 and a["score"] == pytest.approx(0.917)
     assert pd.isna(b["score"])
-    assert c["pts"] == 9 and c["max"] == 19 and c["score"] == pytest.approx(0.474)
+    assert c["pts"] == 9 and c["max"] == 18 and c["score"] == pytest.approx(0.5)
+    assert "hosts" not in gdf.columns
     # area: 2 colonne x 3 righe di celle da 625 m2
     assert gdf.geometry.area.round().tolist() == [3750.0] * 3
 
@@ -121,20 +121,20 @@ def test_export_roundtrip_contract(tmp_path, model, tiny, method):
     for k in ("model", "built", "aoi", "sources"):
         assert meta[k] == META[k]
     assert [v["id"] for v in meta["vector_layers"]] == ["vth"]
-    assert seen[5] == {
-        "score": 0.923,
-        "pts": 12,
-        "max": 13,
-        "n": 5,
+    assert seen[4] == {
+        "score": 0.917,
+        "pts": 11,
+        "max": 12,
+        "n": 4,
         "bedrock": 3,
         "ph": 2,
         "texture": 3,
         "elevation": 3,
-        "hosts": 1,
     }
     assert seen[3] == {"pts": 3, "max": 9, "n": 3, "ph": 1, "elevation": 2, "forest_type": 0}  # niente score
-    assert seen[7]["score"] == 0.474 and seen[7]["hosts"] == 0 and seen[7]["bedrock"] == 0
-    assert set(seen) == {3, 5, 7}
+    assert seen[6]["score"] == 0.5 and seen[6]["bedrock"] == 0 and seen[6]["forest_type"] == 3
+    assert all("hosts" not in props for props in seen.values())
+    assert set(seen) == {3, 4, 6}
 
 
 def test_geojsonseq_omits_missing_keys(tmp_path, model, tiny):
@@ -220,3 +220,14 @@ def test_synthetic_app_fixture_if_present(model):
     with open(path, "rb") as f:
         meta = Reader(MmapSource(f)).metadata()
     assert meta["synthetic"] is True and "SINTETICI" in meta["description"]
+
+
+def test_v1_contract_keeps_hosts(model_v1):
+    """vth-v1 resta esportabile: lì gli ospiti sono un parametro remoto (massimo 1)."""
+    g = Grid.from_bounds((579_000, 939_000, 579_050, 939_050), "EPSG:5659", 25.0)
+    p = {pid: np.full(g.shape, NA, dtype="uint8") for pid in model_v1.remote_params()}
+    for pid, v in (("bedrock", 3), ("ph", 2), ("texture", 3), ("elevation", 3), ("hosts", 1)):
+        p[pid][:] = v
+    gdf = polygonize(p, np.ones(g.shape, bool), g, model_v1)
+    row = gdf.drop(columns="geometry").to_dict("records")[0]
+    assert row["hosts"] == 1 and row["pts"] == 12 and row["max"] == 13 and row["n"] == 5

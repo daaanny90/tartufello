@@ -24,7 +24,9 @@ NA = 255  # "non disponibile" negli array di punti uint8
 # Non cambia nessuna soglia, toglie solo il rumore di rappresentazione.
 DECIMALS = 6
 
-DEFAULT_MODEL_PATH = REPO_ROOT / "model" / "vth-v1.json"
+MODEL_V1_PATH = REPO_ROOT / "model" / "vth-v1.json"
+MODEL_V2_PATH = REPO_ROOT / "model" / "vth-v2.json"
+DEFAULT_MODEL_PATH = MODEL_V2_PATH  # modello corrente; il build usa quello di build.toml
 
 _OPS = {
     "gt": np.greater,

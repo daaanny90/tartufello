@@ -80,11 +80,24 @@ def test_unknown_rule_key_is_rejected():
         validate_rules([{"gt": 1}])
 
 
-def test_model_remote_params_and_max(model):
+def test_model_v2_remote_params_and_max(model):
     remote = model.remote_params()
-    assert remote == ["bedrock", "ph", "caco3", "texture", "elevation", "forest_type", "hosts"]
-    assert model.remote_max("hosts") == 1
-    assert all(model.remote_max(p) == 3 for p in remote if p != "hosts")
+    assert model.id == "vth-v2"
+    assert remote == ["bedrock", "ph", "caco3", "texture", "elevation", "forest_type"]
+    assert "hosts" not in remote and "hosts" not in model.tile_properties
+    assert all(model.remote_max(p) == 3 for p in remote)
     assert model.min_params == 4
-    # ogni parametro remoto ha la sua chiave nel contratto dei tile
+    assert model.categories("forest_type") == {"termofile": 3, "mesofile": 2, "umidi": 1, "altri": 0}
     assert set(remote) <= set(model.tile_properties)
+
+
+def test_model_v1_still_loads(model_v1):
+    remote = model_v1.remote_params()
+    assert remote == ["bedrock", "ph", "caco3", "texture", "elevation", "forest_type", "hosts"]
+    assert model_v1.remote_max("hosts") == 1
+    assert set(remote) <= set(model_v1.tile_properties)
+
+
+def test_v1_v2_same_numeric_rules(model, model_v1):
+    for pid in ("ph", "caco3", "elevation", "ca_exch"):
+        assert model.rules(pid) == model_v1.rules(pid)

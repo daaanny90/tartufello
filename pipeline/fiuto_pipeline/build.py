@@ -42,7 +42,6 @@ PARAM_SOURCES = {
 }
 
 
-
 def attribution(srcs: list) -> str:
     """Attribuzione per il metadata dei tile: la CC BY chiede di citare fonte e licenza.
 
@@ -111,7 +110,13 @@ def run_build(
     lookups_used: dict[str, str] = {}  # param -> tabella
     drafts: dict[str, int] = {}  # tabella -> righe BOZZA
 
+    remote = set(model.remote_params())
+
     def ok(res):
+        if res.param not in remote:
+            # es. ospiti in vth-v2: il derive li calcola ancora, ma il modello non li usa da remoto
+            log(f"  - {res.param}: non è un parametro remoto di {model.id}, ignorato")
+            return
         if res.unmapped:
             unmapped[res.param] = res.unmapped
         if res.lookup:
@@ -137,6 +142,8 @@ def run_build(
         )
 
     def skip(pid, reason):
+        if pid not in remote:
+            return
         status[pid] = {"status": "saltato", "reason": reason}
         log(f"  - {pid}: saltato. {reason}")
 

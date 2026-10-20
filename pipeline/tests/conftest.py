@@ -15,7 +15,7 @@ import rasterio
 from affine import Affine
 
 from fiuto_pipeline.grid import Grid
-from fiuto_pipeline.model import DEFAULT_MODEL_PATH, load_model
+from fiuto_pipeline.model import DEFAULT_MODEL_PATH, MODEL_V1_PATH, load_model
 
 # Area sintetica in EPSG:5659 (metri), 2 km x 1 km
 X0, Y0 = 600_000.0, 930_000.0
@@ -24,7 +24,14 @@ W_M, H_M = 2_000.0, 1_000.0
 
 @pytest.fixture(scope="session")
 def model():
+    """Modello corrente (vth-v2)."""
     return load_model()
+
+
+@pytest.fixture(scope="session")
+def model_v1():
+    """vth-v1 resta leggibile: alcuni test lo usano apposta (es. ospiti da remoto)."""
+    return load_model(MODEL_V1_PATH)
 
 
 @pytest.fixture

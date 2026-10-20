@@ -24,7 +24,8 @@ def test_shipped_lookups_are_sourced_drafts(model):
         lk = load_lookup(name, LOOKUPS_DIR)
         for k, row in lk.rows.items():
             assert row.get("fonte"), f"{name}.csv: '{k}' senza fonte"
-            assert "BOZZA" in row.get("note", ""), f"{name}.csv: '{k}' non segnata come BOZZA"
+            note = row.get("note", "")
+            assert "BOZZA" in note or "Deciso" in note, f"{name}.csv: '{k}' né BOZZA né decisa"
     category_map(load_lookup("geologia_vth", LOOKUPS_DIR), "vth_class", model.categories("bedrock"))
     category_map(load_lookup("suoli_tessitura", LOOKUPS_DIR), "texture_id", model.categories("texture"))
     category_map(load_lookup("forestale_vth", LOOKUPS_DIR), "forest_class", model.categories("forest_type"))
@@ -73,7 +74,7 @@ def test_duplicate_key_and_missing_column(tmp_path):
 def test_hosts_above_remote_max_is_error(tmp_path, model):
     write_text(
         tmp_path / "forestale_vth.csv",
-        "tipo_er,tipo_er_nome,forest_class,hosts,note,fonte\nT_SINT_1,x,latifoglie_fresche,2,,\n",
+        "tipo_er,tipo_er_nome,forest_class,hosts,note,fonte\nT_SINT_1,x,termofile,2,,\n",
     )
     lk = load_lookup("forestale_vth", tmp_path)
     with pytest.raises(ConfigError, match="fuori da 0..1"):
@@ -181,7 +182,7 @@ def test_derive_forest_type_and_hosts(tmp_path, grid, model):
         tmp_path / "forestale_vth.csv",
         """
         tipo_er,tipo_er_nome,forest_class,hosts,note,fonte
-        T_SINT_1,Faggeta sintetica,latifoglie_fresche,1,,test
+        T_SINT_1,Faggeta sintetica,termofile,1,,test
         T_SINT_2,Pineta sintetica,altri,,,test
         """,
     )

@@ -91,6 +91,8 @@ def run_info(
         print(f"      dati locali: {_data_state(src)}", file=out)
         print(f"      scarico: {_fetch_state(src)}", file=out)
         for use, keys in DERIVE_NEEDS.get(sid, {}).items():
+            if use != "maschera bosco" and use not in model.remote_params():
+                continue  # es. ospiti con vth-v2
             miss = src.missing("attributes", *keys)
             print(f"      {use}: {'attributi ok' if not miss else 'mancano ' + ', '.join(miss)}", file=out)
         if any(src.endpoint(s) for s in ("wms", "wfs", "wcs")) and src.status != STATUS_OK:

@@ -13,8 +13,9 @@ def arr(*vals):
     return np.array(vals, dtype="uint8")
 
 
-def test_hosts_counts_max_one(model):
-    # 4 parametri: tre da 3 punti massimi + hosts (massimo remoto 1)
+def test_hosts_counts_max_one(model_v1):
+    # vth-v1: 4 parametri, tre da 3 punti massimi + hosts (massimo remoto 1)
+    model = model_v1
     p = {
         "ph": arr(3, 3),
         "texture": arr(2, 2),
@@ -71,3 +72,9 @@ def test_score_rounding_half_up():
     # 5/16 = 0.3125 -> 313 (non 312 come con l'arrotondamento al pari)
     assert score_milli(np.array([5]), np.array([16])).tolist() == [313.0]
     assert score_milli(np.array([2]), np.array([3])).tolist() == [667.0]
+
+
+def test_v2_rejects_hosts(model):
+    # in vth-v2 gli ospiti non sono un parametro remoto: il build non deve passarli a combine
+    with pytest.raises(ModelError, match="hosts"):
+        combine({"hosts": arr(1)}, model)

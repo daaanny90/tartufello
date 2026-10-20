@@ -1,6 +1,6 @@
 # Impostazioni del build (griglia, export).
 
-model = "../model/vth-v1.json"   # relativo a pipeline/
+model = "../model/vth-v2.json"   # relativo a pipeline/ (vth-v1.json resta leggibile)
 
 [grid]
 crs = "EPSG:5659"   # CRS di lavoro (dati regionali)

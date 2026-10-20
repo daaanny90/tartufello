@@ -14,7 +14,7 @@ from shapely.geometry import box
 from fiuto_pipeline.build import run_build
 from fiuto_pipeline.cli import main
 from fiuto_pipeline.errors import FiutoError
-from fiuto_pipeline.model import DEFAULT_MODEL_PATH
+from fiuto_pipeline.model import DEFAULT_MODEL_PATH, MODEL_V1_PATH
 
 from .conftest import H_M, W_M, X0, Y0, write_raster, write_text, write_vector
 
@@ -29,7 +29,7 @@ TEX_SINT_B,argillosa,,test sintetico
 """
 LOOKUP_FOR = """
 tipo_er,tipo_er_nome,forest_class,hosts,note,fonte
-T_SINT_1,Bosco sintetico,latifoglie_fresche,1,,test sintetico
+T_SINT_1,Bosco sintetico,termofile,1,,test sintetico
 """
 
 
@@ -135,8 +135,11 @@ def _run(project, **kw):
 
 def test_full_build(project, model):
     rep, log = _run(project)
-    assert rep["model"] == "vth-v1"
+    assert rep["model"] == "vth-v2"
     assert all(v["status"] == "ok" for v in rep["params"].values()), rep["params"]
+    # vth-v2: ospiti fuori dallo score remoto, anche se derive_forest li calcola
+    assert "hosts" not in rep["params"] and "hosts" not in rep["availability_pct"]
+    assert "ignorato" in log
     assert rep["availability_pct"]["elevation"] == 100.0
     assert rep["mask"]["type"] == "bosco"
     # U_SINT_2 è fuori bosco: va comunque segnalata, con 0 ha in bosco
@@ -151,10 +154,10 @@ def test_full_build(project, model):
 
     # GeoTIFF: bande con nome, score in millesimi
     with rasterio.open(rep["outputs"]["geotiff"]) as ds:
-        assert ds.crs.to_epsg() == 5659 and ds.count == 12
+        assert ds.crs.to_epsg() == 5659 and ds.count == 11
         assert ds.descriptions[:5] == ("score_x1000", "pts", "max", "n", "mask")
         score = ds.read(1)
-    # cella in alto a sinistra: bedrock 3, ph 3, caco3 3, texture 3, elev 3, forest 3, hosts 1 -> 19/19
+    # cella in alto a sinistra: bedrock 3, ph 3, caco3 3, texture 3, elev 3, forest 3 -> 18/18
     assert score[0, 0] == 1000
     assert score[0, -1] == 65535  # fuori bosco
 
@@ -165,7 +168,7 @@ def test_full_build(project, model):
 
     with open(exp["tiles"]["path"], "rb") as f:
         meta = Reader(MmapSource(f)).metadata()
-    assert meta["model"] == "vth-v1" and meta["aoi"] == "sint"
+    assert meta["model"] == "vth-v2" and meta["aoi"] == "sint"
     assert {s["id"] for s in meta["sources"]} == {"dtm", "ph", "suoli", "geologia", "forestale"}
     assert all("verified" in s for s in meta["sources"])
 
@@ -177,7 +180,7 @@ def test_full_build(project, model):
         and rows[0]["unit_name"] == "Da classificare sint"
         and rows[0]["vth_class"] == ""
     )
-    assert json.loads((project / "out" / "report.json").read_text())["model"] == "vth-v1"
+    assert json.loads((project / "out" / "report.json").read_text())["model"] == "vth-v2"
 
 
 def test_unconfigured_source_is_skipped(project):
@@ -223,7 +226,7 @@ def test_cli_build_and_errors(project, capsys):
     assert (project / "cli_out" / "report.json").exists()
     assert main(base + ["info"]) == 0
     out = capsys.readouterr().out
-    assert "Parametri pronti per il build: bedrock, ph, caco3, texture, elevation, forest_type, hosts" in out
+    assert "Parametri pronti per il build: bedrock, ph, caco3, texture, elevation, forest_type\n" in out
 
 
 def test_cli_info_on_repo_config(capsys):
@@ -324,3 +327,34 @@ def test_attribution_marks_unverified_licences():
     )
     assert "CC BY 4.0: DTM 5x5, Carta dei suoli 1:50.000" in text
     assert "licenza da verificare: pH" in text
+
+
+def test_v2_tiles_have_no_hosts(project, model):
+    from pmtiles.reader import MmapSource, Reader, all_tiles
+
+    from fiuto_pipeline.export.mvt import decode_tile
+
+    rep, _ = _run(project)
+    with open(rep["outputs"]["export"]["tiles"]["path"], "rb") as f:
+        src = MmapSource(f)
+        meta = Reader(src).metadata()
+        keys = set()
+        for _zxy, data in all_tiles(src):
+            for layer in decode_tile(data):
+                for feat in layer["features"]:
+                    keys |= set(feat["properties"])
+    assert meta["model"] == "vth-v2" and "hosts" not in keys and "forest_type" in keys
+    assert all("hosts" not in s["params"] for s in meta["sources"])
+
+
+def test_v1_pinned_build_still_has_hosts(project):
+    """vth-v1 resta usabile: con build.toml che lo indica, gli ospiti tornano nello score."""
+    b = project / "build.toml"
+    b.write_text(b.read_text().replace(str(DEFAULT_MODEL_PATH), str(MODEL_V1_PATH)))
+    lk = project / "lookups" / "forestale_vth.csv"
+    lk.write_text(lk.read_text().replace(",termofile,", ",latifoglie_fresche,"))
+    rep, _ = _run(project, tiles=False)
+    assert rep["model"] == "vth-v1"
+    assert rep["params"]["hosts"]["status"] == "ok" and rep["availability_pct"]["hosts"] > 0
+    with rasterio.open(rep["outputs"]["geotiff"]) as ds:
+        assert ds.count == 12

@@ -257,3 +257,9 @@ Dettagli, metodo e decisioni aperte in `pipeline/FASE0.md`; valori verificati in
 - **Istituti faunistici (art. 15)**: lo strato esiste nel webGIS del Piano faunistico venatorio (`https://agri.regione.emilia-romagna.it/MotoreGis/PianoFaunisticoVenatorio/gis.html`, export shapefile), host non raggiungibile dall'ambiente cloud: da esportare a mano. Licenza da verificare.
 - **CAPP, ERG5**: non verificati (host non raggiungibili; CAPP senza download noto).
 - Nota: i dati regionali oggi sono in EPSG:7791 (RDN2008 / UTM 32N) o 25832, non più 5659; la pipeline riproietta.
+
+### Modello vth-v2 (decisioni del 20/10/2026)
+
+- **Ospiti fuori dallo score remoto**: dalla carta forestale valevano 1 sul 99,5% del bosco della Val Baganza. Restano nella checklist sul posto.
+- **Tipo di bosco con classi appenniniche** (non quelle polacche di VTH): latifoglie termofile (roverella, cerrete, orno-ostrieti) 3, mesofile (faggete; in bozza farnia e acero-frassineti) 2, umidi e ripariali 1, altri (rimboschimenti; in bozza robinieti e boscaglie) 0. Ipotesi basata su Moser et al. 2017, da verificare in calibrazione. Castagneti non classificati.
+- **Esito sulla Val Baganza**: tipo di bosco classificato sul 97,7% del bosco, ma lo score distingue ancora poco. Il 26,6% delle celle con score vale esattamente 1 e la media è 0,857: con i dati regionali al 50.000 la valle risulta quasi tutta idonea. Per stringere servono la roccia madre (oggi 18%), il raster del pH a 100 m, le feature morfologiche (esposizione, TPI) e i dati di campo.

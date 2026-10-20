@@ -163,3 +163,18 @@ Tutte le righe hanno `note = "BOZZA da rivedere"` e `fonte` con dataset, attribu
 - **Bozze nel metadata:** le righe BOZZA nelle tabelle usate finiscono nel `warning` del PMTiles e in `report.json` (`lookup_bozza`).
 - **Correzione:** il filtro `mask_where` su Shapefile non trovava nulla se il campo non era tra quelli letti.
 - **`--raw-dir`** per isolare i test dalla cache vera.
+
+## Aggiornamento 20/10/2026: modello vth-v2
+
+Decisioni di Danny (vedi `../model/vth-v2.json`, campo `changes`):
+- **ospiti fuori dallo score remoto**: valevano 1 sul 99,5% del bosco e non distinguevano nulla; restano nella checklist sul posto. Il build li ignora (niente score, tile, report);
+- **tipo di bosco con classi appenniniche**: termofile 3, mesofile 2, umidi 1, altri 0. In `lookups/forestale_vth.csv`:
+  - decise: QU, CE, OS → termofile; FA → mesofile; RI10X, RI20X, RI30X → altri; LM10X, LM20X, LM30X, SP20X, SP40X, SP50X → umidi;
+  - bozze di estensione: QC, LM50X, LM60X → mesofile; BS30X, BS50X, BS51X → altri;
+  - non classificati: CA, PM10X, AB, BS40X.
+
+Build Val Baganza con vth-v2:
+- **tipo di bosco**: copertura dal **4,1% al 97,7%** del bosco (termofile 74%, mesofile 12%, altri 7%, umidi 4%);
+- **score**: presente sul 64,8% (limite: copertura della carta dei suoli); media 0,857, minimo 0,267. Per decili: 0, 0, 444, 3845, 6892, 7066, 31568, 56633, 116120, 203275 celle;
+- **PMTiles**: 3,0 MB, 19840 poligoni.
+- Restano non classificati: castagneti (881 ha in bosco) e unità geologiche come frane quiescenti a2 (6133 ha), FYS2 (4196), MCS (3228), SCB (2208).

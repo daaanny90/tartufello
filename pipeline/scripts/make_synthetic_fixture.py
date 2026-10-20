@@ -30,7 +30,7 @@ from fiuto_pipeline.paths import REPO_ROOT  # noqa: E402
 DEFAULT_OUT = REPO_ROOT / "app" / "e2e" / "fixtures" / "synthetic-vth.pmtiles"
 BBOX_WGS84 = (10.0, 44.6, 10.1, 44.7)
 # Data fissa: il file resta identico a ogni rigenerazione (comodo in git).
-BUILT = "2026-10-19T00:00:00+00:00"
+BUILT = "2026-10-20T00:00:00+00:00"
 
 
 def synthetic_params(shape: tuple[int, int]) -> tuple[dict[str, np.ndarray], np.ndarray]:
@@ -48,16 +48,16 @@ def synthetic_params(shape: tuple[int, int]) -> tuple[dict[str, np.ndarray], np.
 
     N = NA
     params = {
-        "bedrock": blocks([[3, 2, N], [3, 1, 0], [N, N, N]]),
+        "bedrock": blocks([[3, 2, N], [3, 1, 0], [N, 2, N]]),
         "ph": blocks([[3, 1, 2], [2, 3, 0], [N, N, 1]]),
         "caco3": blocks([[2, N, N], [3, N, N], [N, N, N]]),
         "texture": blocks([[3, 3, 1], [2, 3, 3], [N, 0, N]]),
         "elevation": blocks([[3, 3, 3], [2, 2, 2], [1, 1, 0]]),
         "forest_type": blocks([[3, 2, 3], [3, 1, 0], [N, 2, N]]),
-        "hosts": blocks([[1, 1, 0], [1, 0, 0], [N, 1, N]]),
     }
+    # Niente ospiti: in vth-v2 non sono un parametro remoto (e non vanno nei tile).
     # Riga in basso a sinistra: solo 1 parametro (elevation) -> niente score.
-    # Riga in basso al centro: 4 parametri -> score presente.
+    # Riga in basso al centro: 4 parametri (bedrock, texture, elevation, forest_type) -> score presente.
     # Riga in basso a destra: 2 parametri (ph, elevation) -> niente score.
     mask = np.ones(shape, dtype=bool)
     mask[h // 2 - 4 : h // 2 + 4, :] = False  # "strada" non boscata
@@ -68,14 +68,16 @@ def synthetic_params(shape: tuple[int, int]) -> tuple[dict[str, np.ndarray], np.
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Genera la fixture PMTiles SINTETICA per l'app.")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT, help=f"default: {DEFAULT_OUT}")
+    ap.add_argument("--model", type=Path, default=None, help="modello (default: quello corrente, vth-v2)")
     args = ap.parse_args(argv)
 
-    model = load_model()
+    model = load_model(args.model)
     from pyproj import Transformer
 
     t = Transformer.from_crs("EPSG:4326", "EPSG:5659", always_xy=True)
     grid = Grid.from_bounds(t.transform_bounds(*BBOX_WGS84, densify_pts=21), "EPSG:5659", 25.0)
     params, mask = synthetic_params(grid.shape)
+    params = {k: v for k, v in params.items() if k in model.remote_params()}
 
     out = args.out
     stem = out.name.removesuffix(".pmtiles")
