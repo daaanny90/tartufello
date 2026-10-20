@@ -3,22 +3,38 @@
   "title": "Calendario di raccolta tartufi Emilia-Romagna 2026-2030",
   "legalBasis": "L.R. 24/1991 art. 13; DGR n. 137 del 02/02/2026",
   "source": "https://agricoltura.regione.emilia-romagna.it/tartufi/raccolta/calendari/calendario-tartufi-e-r/@@download/file",
-  "transcribedFrom": "BRIEF.md, 19/10/2026",
-  "verified": false,
-  "verificationNote": "Trascritto dal brief, non ancora confrontato con il PDF della delibera.",
-  "validYears": { "from": 2026, "to": 2030 },
+  "lawSource": "https://agricoltura.regione.emilia-romagna.it/fitosanitario/normativa/regionale/legge-regionale-n.-24-del-2-settembre-1991/@@download/file",
+  "lawNote": "Testo coordinato non ufficiale della L.R. 24/1991 (modifiche fino alla L.R. 17/2016), letto il 20/10/2026.",
+  "verified": true,
+  "verifiedOn": "2026-10-20",
+  "verificationNote": "Confrontato il 20/10/2026 con il PDF ufficiale (file del 06/02/2026): coincide, sospensioni comprese.",
+  "validYears": {
+    "from": 2026,
+    "to": 2030
+  },
   "zones": [
-    { "id": "collina", "label": "Collina" },
-    { "id": "pianura", "label": "Pianura" }
+    {
+      "id": "collina",
+      "label": "Collina (a sud della via Emilia, montagna compresa)"
+    },
+    {
+      "id": "pianura",
+      "label": "Pianura (a nord della via Emilia)"
+    }
   ],
-  "zonesNote": "Il calendario distingue pianura e collina solo per lo scorzone estivo. Come ricade la montagna va verificato sul testo della delibera [da verificare].",
+  "zonesNote": "L.R. 24/1991 art. 13 c. 2: pianura a nord delle strade statali 9 Emilia e 16 Adriatica, collina a sud. La montagna conta come collina.",
   "species": [
     {
       "id": "uncinatum",
       "latin": "Tuber uncinatum (= T. aestivum)",
       "common": "Nero di Fragno, scorzone autunnale",
       "target": true,
-      "seasons": [{ "from": "10-01", "to": "01-31" }]
+      "seasons": [
+        {
+          "from": "10-01",
+          "to": "01-31"
+        }
+      ]
     },
     {
       "id": "aestivum",
@@ -26,62 +42,112 @@
       "common": "Scorzone estivo",
       "target": true,
       "seasons": [
-        { "from": "06-01", "to": "07-31", "zones": ["pianura"] },
-        { "from": "06-01", "to": "08-15", "zones": ["collina"] }
+        {
+          "from": "06-01",
+          "to": "07-31",
+          "zones": [
+            "pianura"
+          ]
+        },
+        {
+          "from": "06-01",
+          "to": "08-15",
+          "zones": [
+            "collina"
+          ]
+        }
       ]
     },
     {
       "id": "magnatum",
       "latin": "Tuber magnatum",
       "common": "Bianco pregiato",
-      "seasons": [{ "from": "10-01", "to": "01-20" }]
+      "seasons": [
+        {
+          "from": "10-01",
+          "to": "01-20"
+        }
+      ]
     },
     {
       "id": "melanosporum",
       "latin": "Tuber melanosporum",
       "common": "Nero pregiato",
-      "seasons": [{ "from": "11-01", "to": "03-31" }]
+      "seasons": [
+        {
+          "from": "11-01",
+          "to": "03-31"
+        }
+      ]
     },
     {
       "id": "brumale",
       "latin": "Tuber brumale (e var. moschatum)",
       "common": "Brumale",
-      "seasons": [{ "from": "12-01", "to": "04-30" }]
+      "seasons": [
+        {
+          "from": "12-01",
+          "to": "04-30"
+        }
+      ]
     },
     {
       "id": "borchii",
       "latin": "Tuber borchii (= T. albidum)",
       "common": "Bianchetto",
-      "seasons": [{ "from": "12-01", "to": "04-30" }]
+      "seasons": [
+        {
+          "from": "12-01",
+          "to": "04-30"
+        }
+      ]
     },
     {
       "id": "macrosporum",
       "latin": "Tuber macrosporum",
       "common": "Nero liscio",
-      "seasons": [{ "from": "10-01", "to": "01-20" }]
+      "seasons": [
+        {
+          "from": "10-01",
+          "to": "01-20"
+        }
+      ]
     },
     {
       "id": "mesentericum",
       "latin": "Tuber mesentericum",
       "common": "Nero ordinario",
-      "seasons": [{ "from": "10-01", "to": "01-20" }]
+      "seasons": [
+        {
+          "from": "10-01",
+          "to": "01-20"
+        }
+      ]
     }
   ],
   "suspensions": [
-    { "from": "05-01", "to": "05-31", "label": "Sospensione totale di ricerca e raccolta" },
-    { "from": "08-16", "to": "09-30", "label": "Sospensione totale di ricerca e raccolta" }
+    {
+      "from": "05-01",
+      "to": "05-31",
+      "label": "Sospensione totale di ricerca e raccolta"
+    },
+    {
+      "from": "08-16",
+      "to": "09-30",
+      "label": "Sospensione totale di ricerca e raccolta"
+    }
   ],
   "requirements": [
     {
       "id": "tesserino",
       "title": "Tesserino di idoneità",
-      "text": "Serve per cercare e raccogliere.",
-      "ref": "L.R. 24/1991, art. 8"
+      "text": "Serve per cercare e raccogliere. Si ottiene con un esame a quiz su specie, modalità di raccolta e leggi. Vale in tutta Italia; età minima 14 anni.",
+      "ref": "L.R. 24/1991, art. 8 e 10"
     },
     {
       "id": "tassa",
       "title": "Tassa di concessione annuale",
-      "text": "Da pagare ogni anno oltre al tesserino.",
+      "text": "Tassa di concessione regionale, di durata annuale, oltre al tesserino.",
       "ref": "L.R. 24/1991, art. 11"
     },
     {
@@ -93,8 +159,54 @@
     {
       "id": "aree_protette",
       "title": "Aree protette",
-      "text": "Nei parchi valgono regolamenti propri. Confini parchi e Natura 2000 non ancora in mappa [da verificare].",
-      "ref": "L.R. 24/1991, art. 15 e 21; regolamenti dei parchi"
+      "text": "Nei parchi regionali e nelle riserve valgono atti istitutivi, piani e regolamenti propri. Nelle aree pubbliche gli enti possono limitare giorni e accessi. Confini parchi e Natura 2000 non ancora in mappa [da verificare].",
+      "ref": "L.R. 24/1991, art. 20 e 21"
     }
-  ]
+  ],
+  "collectionRules": {
+    "ref": "L.R. 24/1991 art. 12",
+    "night": {
+      "minutesAfterSunset": 60,
+      "minutesBeforeSunrise": 60,
+      "text": "Vietato cercare di notte e comunque da un'ora dopo il tramonto a un'ora prima dell'alba."
+    },
+    "maxDogs": 2,
+    "dailyLimitGrams": 1000,
+    "dailyLimitNote": "In libera raccolta, per cercatore. Se un solo esemplare pesa di più, il limite sale al suo peso.",
+    "toolMaxWidthCm": 6,
+    "notes": [
+      "Al massimo 2 cani per cercatore.",
+      "Solo vanghetto o vangarola larghi al massimo 6 cm.",
+      "Scavare solo dove ha iniziato il cane e riempire subito ogni buca.",
+      "Vietato raccogliere tartufi immaturi.",
+      "Cani al guinzaglio quando si attraversano tartufaie riconosciute."
+    ]
+  },
+  "faunaAreas": {
+    "ref": "L.R. 24/1991 art. 15",
+    "what": "oasi di protezione della fauna, zone di rifugio, zone di ripopolamento e cattura, aziende faunistico-venatorie e agri-turistico-venatorie",
+    "maxDogs": 1,
+    "closed": [
+      {
+        "from": "02-01",
+        "to": "06-30",
+        "zones": [
+          "collina"
+        ]
+      },
+      {
+        "from": "04-01",
+        "to": "06-30",
+        "zones": [
+          "pianura"
+        ]
+      }
+    ],
+    "notes": [
+      "Un solo cane.",
+      "Nelle aziende faunistico-venatorie va segnalata la presenza (estremi del tesserino nei contenitori all'ingresso o come da regolamento dell'azienda).",
+      "Nelle aziende vietato nei giorni di caccia vagante, durante le battute al cinghiale e la caccia di selezione."
+    ],
+    "layerNote": "Confini di queste aree non ancora in mappa [da verificare]."
+  }
 }

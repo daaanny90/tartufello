@@ -1,3 +1,4 @@
+import { legalWindow, type Window } from '../lib/sun'
 import calendarData from './er-calendar-2026-2030.json'
 
 export type ZoneId = 'collina' | 'pianura'
@@ -29,13 +30,34 @@ export interface Requirement {
   ref: string
 }
 
+export interface CollectionRules {
+  ref: string
+  night: { minutesAfterSunset: number; minutesBeforeSunrise: number; text: string }
+  maxDogs: number
+  dailyLimitGrams: number
+  dailyLimitNote: string
+  toolMaxWidthCm: number
+  notes: string[]
+}
+
+export interface FaunaAreas {
+  ref: string
+  what: string
+  maxDogs: number
+  closed: Season[]
+  notes: string[]
+  layerNote: string
+}
+
 export interface Calendar {
   id: string
   title: string
   legalBasis: string
   source: string
-  transcribedFrom: string
+  lawSource: string
+  lawNote: string
   verified: boolean
+  verifiedOn?: string
   verificationNote: string
   validYears: { from: number; to: number }
   zones: { id: string; label: string }[]
@@ -43,6 +65,8 @@ export interface Calendar {
   species: SpeciesRule[]
   suspensions: Suspension[]
   requirements: Requirement[]
+  collectionRules: CollectionRules
+  faunaAreas: FaunaAreas
 }
 
 export const calendar = calendarData as Calendar
@@ -83,6 +107,21 @@ export function isOpen(species: SpeciesRule, d: Date, zone: ZoneId, cal: Calenda
   if (suspensionOn(d, cal)) return false
   const day = mmdd(d)
   return species.seasons.some((s) => (!s.zones || s.zones.includes(zone)) && inRange(day, s.from, s.to))
+}
+
+/** Periodo di divieto nelle aree di tutela della fauna (art. 15), se oggi è dentro. */
+export function faunaClosureOn(d: Date, zone: ZoneId, cal: Calendar = calendar): Season | null {
+  const day = mmdd(d)
+  return cal.faunaAreas.closed.find((s) => (!s.zones || s.zones.includes(zone)) && inRange(day, s.from, s.to)) ?? null
+}
+
+/** Centro di Parma: si usa per l'orario finché il GPS non ha dato una posizione. */
+export const PARMA: [number, number] = [10.328, 44.801]
+
+/** Finestra oraria di ricerca consentita (art. 12), con il margine prudenziale di lib/sun. */
+export function searchWindow(d: Date, position: [number, number] = PARMA, cal: Calendar = calendar): Window | null {
+  const n = cal.collectionRules.night
+  return legalWindow(d, position[1], position[0], n.minutesBeforeSunrise, n.minutesAfterSunset)
 }
 
 function startOfDay(d: Date): Date {

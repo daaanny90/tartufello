@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calendar, dayStatus, inRange, isOpen, nextChange, suspensionOn, targetStatus } from './calendar'
+import { calendar, dayStatus, faunaClosureOn, inRange, isOpen, nextChange, searchWindow, suspensionOn, targetStatus } from './calendar'
 
 const sp = (id: string) => calendar.species.find((s) => s.id === id)!
 const d = (y: number, m: number, day: number) => new Date(y, m - 1, day)
@@ -68,5 +68,29 @@ describe('calendario ER 2026-2030', () => {
     for (const day of [d(2027, 5, 15), d(2027, 9, 1)]) {
       expect(dayStatus(day, 'collina').species.every((s) => !s.open)).toBe(true)
     }
+  })
+})
+
+describe('regole della L.R. 24/1991', () => {
+  it('aree di tutela della fauna: chiuse da febbraio a giugno in collina', () => {
+    expect(faunaClosureOn(d(2027, 6, 10), 'collina')).not.toBeNull()
+    expect(faunaClosureOn(d(2027, 2, 1), 'collina')).not.toBeNull()
+    expect(faunaClosureOn(d(2027, 1, 31), 'collina')).toBeNull()
+    expect(faunaClosureOn(d(2027, 3, 15), 'pianura')).toBeNull()
+    expect(faunaClosureOn(d(2027, 4, 1), 'pianura')).not.toBeNull()
+    expect(faunaClosureOn(d(2027, 7, 1), 'collina')).toBeNull()
+  })
+
+  it('finestra oraria: dentro la giornata, prima dell\'alba e dopo il tramonto', () => {
+    const w = searchWindow(d(2026, 10, 20))!
+    expect(w.from.getTime()).toBeLessThan(w.to.getTime())
+    // Parma, 20 ottobre: alba ~05:41 UTC, tramonto ~16:26 UTC
+    expect(w.from.toISOString() < '2026-10-20T05:41:00Z').toBe(true)
+    expect(w.to.toISOString() > '2026-10-20T16:26:00Z').toBe(true)
+  })
+
+  it('calendario verificato sulla delibera', () => {
+    expect(calendar.verified).toBe(true)
+    expect(calendar.zones.map((z) => z.id)).toEqual(['collina', 'pianura'])
   })
 })

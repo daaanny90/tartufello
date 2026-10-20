@@ -3,15 +3,21 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { db, type Outing } from '../diary/db'
 import { startOuting, tracking } from '../diary/outings'
-import { calendar, dayStatus, formatDate, seasonLabel, targetStatus } from '../rules/calendar'
+import { calendar, dayStatus, faunaClosureOn, formatDate, formatMmdd, searchWindow, seasonLabel, targetStatus } from '../rules/calendar'
 import { settings } from '../settings/settings'
 import { formatDistance, trackLength } from '../lib/geo'
+import { location } from '../lib/geolocation'
+import { formatTime, SAFETY_MIN } from '../lib/sun'
 
 const router = useRouter()
 const today = new Date()
 const status = computed(() => dayStatus(today, settings.zone))
 const target = computed(() => targetStatus(today, settings.zone))
-const zoneLabel = computed(() => calendar.zones.find((z) => z.id === settings.zone)?.label ?? settings.zone)
+const zoneLabel = computed(() => (calendar.zones.find((z) => z.id === settings.zone)?.label ?? settings.zone).split(' (')[0])
+const fauna = computed(() => faunaClosureOn(today, settings.zone))
+const position = computed<[number, number] | undefined>(() => (location.fix ? [location.fix.lon, location.fix.lat] : undefined))
+const hours = computed(() => searchWindow(today, position.value))
+const nowAllowed = computed(() => !!hours.value && Date.now() >= hours.value.from.getTime() && Date.now() <= hours.value.to.getTime())
 
 const lastOuting = ref<Outing | null>(null)
 const seasonFinds = ref(0)
@@ -49,6 +55,10 @@ async function go() {
       <strong>{{ status.suspension.label }}.</strong> Niente ricerca né raccolta fino al {{ status.suspension.to.split('-').reverse().join('/') }}.
     </div>
 
+    <div v-if="fauna && !status.suspension" class="banner warn small">
+      Fino al {{ formatMmdd(fauna.to) }} vietato cercare in oasi di protezione, zone di rifugio, zone di ripopolamento e cattura e aziende faunistico-venatorie (art. 15). Non sono ancora in mappa: occhio ai cartelli.
+    </div>
+
     <section class="card hero" :class="target.open ? 'open' : 'closed'">
       <div class="small muted">Tartufo nero (T. aestivum / uncinatum)</div>
       <div class="state">{{ target.open ? 'Aperto' : 'Chiuso' }}</div>
@@ -58,6 +68,12 @@ async function go() {
       <p v-else-if="target.from">
         Riapre il {{ formatDate(target.from) }} ({{ days(status.species.find((s) => s.species.id === target.forms[0]?.id)?.daysToChange ?? null) }})
         con {{ target.forms[0]?.common.toLowerCase() }}.
+      </p>
+      <p v-if="hours && !status.suspension" class="small">
+        Orario consentito oggi: <strong>{{ formatTime(hours.from) }} - {{ formatTime(hours.to) }}</strong>
+        <span class="pill" :class="nowAllowed ? 'ok' : 'no'" style="margin-left: 4px">{{ nowAllowed ? 'ora sì' : 'ora no' }}</span>
+        <br />
+        <span class="muted">Un'ora prima dell'alba, un'ora dopo il tramonto ({{ position ? 'posizione GPS' : 'calcolato su Parma' }}, {{ SAFETY_MIN }} minuti di margine).</span>
       </p>
       <div class="row">
         <button v-if="!tracking.outingId" class="primary" :disabled="!!status.suspension" @click="go">Inizia uscita</button>

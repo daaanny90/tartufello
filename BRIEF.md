@@ -229,3 +229,15 @@ Prese costruendo la prima versione. Dove si discostano dal resto del brief, valg
 - **Traccia come punti con tempo e precisione** (`TrackPoint[]`), non `GeoJSON.LineString`: serve per la calibrazione e si converte quando occorre.
 - **Spot "riservato"** per le tartufaie con tabella: è la segnalazione manuale prevista in §3.
 - **Rete dall'ambiente cloud di sviluppo.** I domini `*.regione.emilia-romagna.it` sono bloccati dal proxy dell'ambiente: la Fase 0 (verifica dei dati) va fatta da un computer normale o dopo aver aggiunto quei domini alla rete dell'ambiente. Il calendario in app è trascritto da questo brief e segnato come non verificato sul PDF della delibera.
+
+## 12. Fase 0: esiti (dal 20 ottobre 2026)
+
+### Calendario e regole: verificati
+
+- **Calendario 2026-2030**: confrontato il 20/10/2026 con il PDF ufficiale (fonte §10, file del 06/02/2026). Coincide con §3, sospensioni comprese. In app è segnato come verificato.
+- **Zone**: L.R. 24/1991 art. 13 c. 2: pianura a nord delle strade statali 9 Emilia e 16 Adriatica, collina a sud. **La montagna conta come collina**, quindi per l'Appennino lo scorzone estivo va dal 1 giugno al 15 agosto.
+- **Modalità di raccolta** (art. 12): vietato da un'ora dopo il tramonto a un'ora prima dell'alba; al massimo 2 cani; vanghetto largo al massimo 6 cm; scavare solo dove ha iniziato il cane e riempire le buche; niente tartufi immaturi; **massimo 1 kg al giorno** per cercatore in libera raccolta (o il peso di un singolo esemplare più pesante). L'app mostra l'orario del giorno (alba/tramonto calcolati, 5 minuti di margine) e avvisa vicino al limite di peso.
+- **Aree di tutela della fauna** (art. 15): oasi di protezione, zone di rifugio, zone di ripopolamento e cattura, aziende faunistico-venatorie e agri-turistico-venatorie. Un solo cane; **vietato dal 1 febbraio al 30 giugno in collina** (dal 1 aprile al 30 giugno in pianura): lì il primo mese di scorzone estivo è chiuso. Nelle aziende va segnalata la presenza e non si cerca nei giorni di caccia. Il calendario 2026 lo richiama esplicitamente. Layer dei confini **[da verificare]**.
+- **Tesserino** (art. 8): si ottiene con un esame a quiz su specie, modalità di raccolta e leggi; vale in tutta Italia. Va fatto prima di giugno 2027.
+- **Parchi e aree pubbliche** (art. 21): nei parchi regionali e nelle riserve valgono atti istitutivi e regolamenti propri; nelle aree pubbliche gli enti possono limitare giorni e accessi.
+- Fonte delle regole: testo coordinato non ufficiale della L.R. 24/1991 (modifiche fino alla L.R. 17/2016), URL in §10, letto il 20/10/2026.

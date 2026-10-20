@@ -8,7 +8,9 @@ import { db, SPECIES_LABELS, type Find, type Outing, type Spot } from '../diary/
 import { endOuting, startOuting, tracking } from '../diary/outings'
 import { model } from '../field/model'
 import { formatDistance, formatDuration, trackLength } from '../lib/geo'
-import { formatDate } from '../rules/calendar'
+import { location } from '../lib/geolocation'
+import { formatTime } from '../lib/sun'
+import { calendar, formatDate, searchWindow } from '../rules/calendar'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -18,13 +20,26 @@ const finds = ref<Find[]>([])
 const spots = ref<Spot[]>([])
 const adding = ref(false)
 const photoUrls = ref<Record<string, string>>({})
+const dayFinds = ref<Find[]>([])
 const subs: Subscription[] = []
+
+/** Ritrovamenti di tutto il giorno dell'uscita: il limite di legge è per cercatore e per giorno. */
+function dayRange(iso: string): [string, string] {
+  const d = new Date(iso)
+  return [new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString(), new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).toISOString()]
+}
 
 onMounted(() => {
   subs.push(
     liveQuery(() => db.outings.get(props.id)).subscribe((o) => (outing.value = o ?? null)),
     liveQuery(() => db.finds.where('outingId').equals(props.id).sortBy('date')).subscribe((f) => (finds.value = f)),
     liveQuery(() => db.spots.toArray()).subscribe((s) => (spots.value = s)),
+    liveQuery(async () => {
+      const o = await db.outings.get(props.id)
+      if (!o) return []
+      const [from, to] = dayRange(o.date)
+      return db.finds.where('date').between(from, to, true, false).toArray()
+    }).subscribe((f) => (dayFinds.value = f)),
   )
 })
 
@@ -50,6 +65,17 @@ const duration = computed(() => {
 })
 const length = computed(() => (outing.value ? trackLength(outing.value.track) : 0))
 const totalGrams = computed(() => finds.value.reduce((s, f) => s + (f.grams ?? 0), 0))
+const rules = calendar.collectionRules
+const dayGrams = computed(() => dayFinds.value.reduce((s, f) => s + (f.grams ?? 0), 0))
+/** Se un solo esemplare supera il limite, il limite diventa il suo peso (art. 12 c. 4). */
+const dayLimit = computed(() =>
+  dayFinds.value.length === 1 ? Math.max(rules.dailyLimitGrams, dayFinds.value[0].grams ?? 0) : rules.dailyLimitGrams,
+)
+const hours = computed(() => {
+  const f = location.fix
+  return searchWindow(new Date(now.value), f ? [f.lon, f.lat] : undefined)
+})
+const outOfHours = computed(() => !!hours.value && (now.value < hours.value.from.getTime() || now.value > hours.value.to.getTime()))
 const visited = computed(() => spots.value.filter((s) => outing.value?.spotsVisited.includes(s.id)))
 const spotPoints = computed(() => visited.value.filter((s) => s.geom.type === 'Point').map((s) => s.geom.coordinates as [number, number]))
 const hostName = (id?: string) => model.hostSpecies.find((h) => h.id === id)?.it
@@ -112,6 +138,16 @@ async function removeOuting() {
         <button v-else class="ghost" @click="resume">Riapri</button>
       </div>
     </section>
+
+    <div v-if="active && outOfHours && hours" class="banner bad small">
+      Fuori orario: oggi si cerca dalle {{ formatTime(hours.from) }} alle {{ formatTime(hours.to) }}. {{ rules.night.text }}
+    </div>
+    <div v-if="dayGrams >= dayLimit" class="banner bad small">
+      Oggi hai raccolto {{ dayGrams }} g: limite giornaliero raggiunto. {{ rules.dailyLimitNote }}
+    </div>
+    <div v-else-if="dayGrams >= dayLimit * 0.8" class="banner warn small">
+      Oggi {{ dayGrams }} g su {{ dayLimit }} g di limite giornaliero.
+    </div>
 
     <FindForm v-if="adding" :outing-id="outing.id" @saved="adding = false" @cancel="adding = false" />
 

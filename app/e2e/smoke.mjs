@@ -47,6 +47,7 @@ try {
     acceptDownloads: true,
     serviceWorkers: 'block',
     locale: 'it-IT',
+    timezoneId: 'Europe/Rome',
   })
   const page = await context.newPage()
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))

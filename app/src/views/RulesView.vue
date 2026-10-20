@@ -9,8 +9,8 @@ import { calendar, formatMmdd, seasonLabel } from '../rules/calendar'
     <RouterLink to="/impostazioni" class="small">← Altro</RouterLink>
     <h1 style="margin-top: 8px">Regole</h1>
 
-    <div v-if="!calendar.verified" class="banner warn small">
-      {{ calendar.verificationNote }} Fonte: <a :href="calendar.source" target="_blank" rel="noopener">delibera</a>.
+    <div class="banner small" :class="calendar.verified ? 'ok' : 'warn'">
+      {{ calendar.verificationNote }} Fonte: <a :href="calendar.source" target="_blank" rel="noopener">calendario ufficiale</a>.
     </div>
 
     <section class="card">
@@ -38,12 +38,37 @@ import { calendar, formatMmdd, seasonLabel } from '../rules/calendar'
     </section>
 
     <section class="card">
+      <h2>Come si cerca</h2>
+      <p><strong>{{ calendar.collectionRules.night.text }}</strong> L'orario di oggi è nella pagina Oggi.</p>
+      <ul>
+        <li v-for="n in calendar.collectionRules.notes" :key="n">{{ n }}</li>
+        <li>Al massimo {{ calendar.collectionRules.dailyLimitGrams / 1000 }} kg al giorno. {{ calendar.collectionRules.dailyLimitNote }}</li>
+      </ul>
+      <p class="small muted">{{ calendar.collectionRules.ref }}</p>
+    </section>
+
+    <section class="card">
+      <h2>Aree di tutela della fauna</h2>
+      <p>In {{ calendar.faunaAreas.what }}:</p>
+      <ul>
+        <li v-for="c in calendar.faunaAreas.closed" :key="c.from">
+          vietato dal {{ formatMmdd(c.from) }} al {{ formatMmdd(c.to) }} in {{ c.zones?.join(', ') }};
+        </li>
+        <li v-for="n in calendar.faunaAreas.notes" :key="n">{{ n }}</li>
+      </ul>
+      <p class="small muted">{{ calendar.faunaAreas.ref }}. {{ calendar.faunaAreas.layerNote }}</p>
+    </section>
+
+    <section class="card">
       <h2>Cosa serve</h2>
       <div v-for="r in calendar.requirements" :key="r.id" style="margin-bottom: 10px">
         <strong>{{ r.title }}</strong>
         <div>{{ r.text }}</div>
         <div class="small muted">{{ r.ref }}</div>
       </div>
+      <p class="small muted">
+        <a :href="calendar.lawSource" target="_blank" rel="noopener">L.R. 24/1991</a>: {{ calendar.lawNote }}
+      </p>
     </section>
 
     <section class="card">
