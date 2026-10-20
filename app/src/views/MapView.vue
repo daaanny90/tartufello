@@ -72,7 +72,7 @@ const metaText = (k: string) => {
 }
 const scoreWarning = computed(() => metaText('warning'))
 const notesOpen = ref(false)
-const offlineMissing = computed(() => settings.basemap === 'offline' && !mapFiles.basemap)
+const offlineMissing = computed(() => settings.basemap === 'offline' && !mapFiles.basemap && !mapFiles.rilievo)
 
 /** Distanza e direzione dalla mia posizione al punto selezionato: per tornare a uno spot. */
 const nav = computed(() => {
@@ -231,8 +231,8 @@ watch(
 )
 
 watch(
-  () => settings.basemap,
-  () => map.value?.setStyle(baseStyle(settings.basemap, !!mapFiles.basemap), { diff: false }),
+  () => [settings.basemap, mapFiles.basemap, mapFiles.rilievo],
+  () => map.value?.setStyle(baseStyle(settings.basemap, mapFiles), { diff: false }),
 )
 
 watch(
@@ -270,7 +270,7 @@ onMounted(() => {
   const view = savedView()
   const m = new MlMap({
     container: container.value!,
-    style: baseStyle(settings.basemap, !!mapFiles.basemap),
+    style: baseStyle(settings.basemap, mapFiles),
     center: view.center,
     zoom: view.zoom,
     attributionControl: { compact: true },

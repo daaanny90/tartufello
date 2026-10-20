@@ -1,4 +1,4 @@
-import { FileSource, PMTiles, Protocol, type Header } from 'pmtiles'
+import { FileSource, PMTiles, Protocol, TileType, type Header } from 'pmtiles'
 import { reactive } from 'vue'
 import { db, nowIso, type FileKey, type StoredFile } from '../diary/db'
 
@@ -19,17 +19,32 @@ export interface FileInfo {
   meta: Record<string, unknown>
 }
 
-export const mapFiles = reactive<Record<FileKey, FileInfo | null>>({ score: null, basemap: null })
+export const mapFiles = reactive<Record<FileKey, FileInfo | null>>({ score: null, basemap: null, rilievo: null })
+
+/** Basemap regionale costruita dalla pipeline (curve di livello, sentieri...) invece che Protomaps. */
+export const isFiutoBasemap = (info: FileInfo | null) =>
+  !!info && (info.meta.fiuto_basemap === true || (info.meta.vector_layers as { id: string }[] | undefined)?.some((l) => l.id === 'contours') === true)
+
+const isRaster = (h: Header) => h.tileType !== TileType.Mvt && h.tileType !== TileType.Unknown
 
 export const sourceUrl = (key: FileKey) => `pmtiles://fiuto-${key}`
 
-async function open(file: StoredFile): Promise<FileInfo> {
+async function read(file: StoredFile): Promise<{ pm: PMTiles; info: FileInfo }> {
   const pm = new PMTiles(new FileSource(new File([file.blob], `fiuto-${file.key}`)))
   const header = await pm.getHeader()
   const meta = ((await pm.getMetadata()) ?? {}) as Record<string, unknown>
-  instances.set(file.key, pm)
+  return { pm, info: { name: file.name, size: file.size, importedAt: file.importedAt, header, meta } }
+}
+
+function register(key: FileKey, pm: PMTiles) {
+  instances.set(key, pm)
   protocol.add(pm)
-  return { name: file.name, size: file.size, importedAt: file.importedAt, header, meta }
+}
+
+async function open(file: StoredFile): Promise<FileInfo> {
+  const { pm, info } = await read(file)
+  register(file.key, pm)
+  return info
 }
 
 export function pmtiles(key: FileKey): PMTiles | undefined {
@@ -60,12 +75,16 @@ async function checkPmtiles(blob: Blob): Promise<void> {
 export async function importMapFile(key: FileKey, blob: Blob, name: string): Promise<FileInfo> {
   await checkPmtiles(blob)
   const stored: StoredFile = { key, name, blob, size: blob.size, importedAt: nowIso() }
-  const info = await open(stored)
+  // Prima si controlla, poi si registra: un file sbagliato non deve rimpiazzare quello buono.
+  const { pm, info } = await read(stored)
+  if (key === 'rilievo' && !isRaster(info.header)) throw new Error('Il rilievo deve essere un PMTiles raster (immagini).')
+  if (key === 'basemap' && info.header.tileType !== TileType.Mvt) throw new Error('La basemap deve essere un PMTiles vettoriale.')
   if (key === 'score') {
     const layers = (info.meta.vector_layers as { id: string }[] | undefined)?.map((l) => l.id) ?? []
     if (!layers.includes('vth')) throw new Error('Il file non contiene il layer "vth" della pipeline.')
   }
   await db.files.put(stored)
+  register(key, pm)
   mapFiles[key] = info
   return info
 }

@@ -5,7 +5,7 @@ import { backupFileName, download, exportEncrypted, importEncrypted } from '../b
 import type { FileKey } from '../diary/db'
 import { model } from '../field/model'
 import { downloadMapFile, formatBytes, importMapFile, mapFiles, removeMapFile } from '../map/mapFiles'
-import { fetchPublishedMaps, publishedUrl, type PublishedMap } from '../map/published'
+import { fetchPublishedMaps, groupByArea, KIND_LABEL, kindOf, publishedUrl, type PublishedArea } from '../map/published'
 import { calendar } from '../rules/calendar'
 import { settings } from '../settings/settings'
 
@@ -24,17 +24,26 @@ async function refreshStorage() {
   if (est?.usage !== undefined) usage.value = `${formatBytes(est.usage)} usati${est.quota ? ` su ${formatBytes(est.quota)}` : ''}`
 }
 
-const published = ref<PublishedMap[]>([])
+const areas = ref<PublishedArea[]>([])
+const kindLabel = (m: PublishedArea['maps'][number]) => KIND_LABEL[kindOf(m)]
 
 onMounted(async () => {
   await refreshStorage()
-  published.value = await fetchPublishedMaps()
+  areas.value = groupByArea(await fetchPublishedMaps())
 })
 
-function fromPublished(m: PublishedMap) {
-  void run('score', async () => {
-    const info = await downloadMapFile('score', new URL(publishedUrl(m.file), location.href).href)
-    return `Scaricata ${m.title} (${formatBytes(info.size)}).`
+/** Una zona è pronta se ogni suo file è quello caricato nel relativo slot. */
+const areaReady = (a: PublishedArea) => a.maps.every((m) => mapFiles[kindOf(m)]?.name === m.file)
+
+/** Scarica score, basemap e rilievo della zona: dopo, l'app funziona in bosco senza rete. */
+function downloadArea(a: PublishedArea) {
+  void run('area', async () => {
+    for (const m of a.maps) {
+      msg.value.area = { kind: 'ok', text: `Scarico ${kindLabel(m)} (${formatBytes(m.size)})…` }
+      await downloadMapFile(kindOf(m), new URL(publishedUrl(m.file), location.href).href)
+    }
+    if (a.maps.some((m) => kindOf(m) !== 'score')) settings.basemap = 'offline'
+    return `${a.area}: pronta per il campo, anche senza rete.`
   })
 }
 
@@ -134,6 +143,22 @@ function doImport() {
       </label>
     </section>
 
+    <section v-if="areas.length" class="card">
+      <h2>Pronta per il campo</h2>
+      <p class="small">Scarica una zona prima di partire: idoneità, mappa di base e rilievo restano nel telefono e funzionano senza rete.</p>
+      <div v-for="a in areas" :key="a.area" class="row spread" style="flex-wrap: nowrap; margin-top: 8px">
+        <div>
+          <strong>{{ a.area }}</strong>
+          <div class="small muted">
+            {{ a.maps.map(kindLabel).join(', ') }} · {{ formatBytes(a.size) }}{{ a.maps.some((m) => m.warning) ? ' · in bozza' : '' }}
+          </div>
+        </div>
+        <span v-if="areaReady(a)" class="pill ok">scaricata</span>
+        <button v-else class="primary" :disabled="busy === 'area'" data-testid="download-area" @click="downloadArea(a)">Scarica tutto</button>
+      </div>
+      <p v-if="msg.area" class="banner small" :class="msg.area.kind" style="margin-top: 10px">{{ msg.area.text }}</p>
+    </section>
+
     <section class="card">
       <h2>Mappa di idoneità</h2>
       <template v-if="mapFiles.score">
@@ -154,15 +179,6 @@ function doImport() {
         <button class="danger" @click="removeMapFile('score')">Rimuovi</button>
       </template>
       <p v-else class="small muted">Nessuna. Il file `.pmtiles` lo genera la pipeline (cartella pipeline/ del repo).</p>
-      <div v-if="published.length" class="stack" style="margin-top: 10px">
-        <div v-for="m in published" :key="m.file" class="row spread" style="flex-wrap: nowrap">
-          <div>
-            <strong>{{ m.title }}</strong>
-            <div class="small muted">{{ formatBytes(m.size) }} · modello {{ m.model }} · {{ m.built.slice(0, 10) }}{{ m.warning ? ' · in bozza' : '' }}</div>
-          </div>
-          <button class="primary" :disabled="busy === 'score'" @click="fromPublished(m)">Scarica</button>
-        </div>
-      </div>
       <label class="field" style="margin-top: 10px">
         <span>Importa file PMTiles</span>
         <input type="file" accept=".pmtiles" data-testid="score-file" :disabled="busy === 'score'" @change="onMapFile('score', $event)" />
@@ -175,24 +191,31 @@ function doImport() {
     </section>
 
     <section class="card">
-      <h2>Basemap offline</h2>
+      <h2>Mappa di base offline</h2>
       <p class="small">
         Le basemap online (OpenTopoMap, OpenStreetMap) vedono quali tessere chiedi, quindi l'area che guardi. Con la basemap offline nessuno sa dove sei.
         In bosco funziona solo quella offline o le tessere già viste.
       </p>
       <p class="small muted">
-        Si prepara una volta dal computer con
+        Quella regionale (curve di livello, rilievo) arriva con "Scarica tutto". In alternativa un estratto OpenStreetMap:
         <code>pmtiles extract https://build.protomaps.com/AAAAMMGG.pmtiles parma.pmtiles --bbox=…</code>
-        (go-pmtiles), poi si importa qui.
+        (go-pmtiles), da importare qui.
       </p>
-      <template v-if="mapFiles.basemap">
-        <p><strong>{{ mapFiles.basemap.name }}</strong> · {{ formatBytes(mapFiles.basemap.size) }}</p>
-        <button class="danger" @click="removeMapFile('basemap')">Rimuovi</button>
-      </template>
+      <div v-for="k in (['basemap', 'rilievo'] as const)" :key="k">
+        <div v-if="mapFiles[k]" class="row spread" style="flex-wrap: nowrap; margin-bottom: 8px">
+          <span><strong>{{ k === 'basemap' ? 'Base' : 'Rilievo' }}</strong>: {{ mapFiles[k]!.name }} · {{ formatBytes(mapFiles[k]!.size) }}</span>
+          <button class="danger" @click="removeMapFile(k)">Rimuovi</button>
+        </div>
+      </div>
       <label class="field" style="margin-top: 10px">
-        <span>Importa basemap PMTiles</span>
+        <span>Importa mappa di base (PMTiles vettoriale)</span>
         <input type="file" accept=".pmtiles" :disabled="busy === 'basemap'" @change="onMapFile('basemap', $event)" />
       </label>
+      <label class="field">
+        <span>Importa rilievo (PMTiles raster)</span>
+        <input type="file" accept=".pmtiles" :disabled="busy === 'rilievo'" @change="onMapFile('rilievo', $event)" />
+      </label>
+      <p v-if="msg.rilievo" class="banner small" :class="msg.rilievo.kind">{{ msg.rilievo.text }}</p>
       <label class="field">
         <span>Sfondo in uso</span>
         <select v-model="settings.basemap">

@@ -74,7 +74,8 @@ export interface Find {
   notes?: string
 }
 
-export type FileKey = 'score' | 'basemap'
+/** score = idoneità VTH; basemap = vettoriale (Protomaps o regionale fiuto); rilievo = ombreggiatura raster. */
+export type FileKey = 'score' | 'basemap' | 'rilievo'
 
 export interface StoredFile {
   key: FileKey
