@@ -21,6 +21,7 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--lookups", type=Path, help="cartella delle tabelle di lookup (default: pipeline/lookups)"
     )
+    p.add_argument("--raw-dir", type=Path, help="cartella dei dati scaricati (default: pipeline/data/raw)")
     sub = p.add_subparsers(dest="cmd", required=True, metavar="comando")
 
     sub.add_parser("info", help="stato di sorgenti, lookup e AOI: cosa è ancora [da verificare]")
@@ -36,6 +37,9 @@ def _parser() -> argparse.ArgumentParser:
     f.add_argument("--aoi", help="area da scaricare (obbligatoria per WFS e WCS)")
     f.add_argument("--method", choices=["url", "wfs", "wcs"], help="forza il metodo di scarico")
     f.add_argument("--force", action="store_true", help="riscarica anche se è già in cache")
+
+    pr = sub.add_parser("prepare", help="prepara dati derivati da file scaricati (oggi: suoli -> 0-30 cm)")
+    pr.add_argument("source", choices=["suoli"], help="sorgente da preparare")
 
     b = sub.add_parser("build", help="derive + score + export per un'AOI")
     b.add_argument("--aoi", required=True, help="nome dell'AOI in aoi.toml")
@@ -53,7 +57,7 @@ def _cmd_capabilities(args) -> int:
     from .config import get_source, load_sources
     from .fetch import run_capabilities
 
-    src = get_source(load_sources(args.sources), args.source)
+    src = get_source(load_sources(args.sources, raw_dir=args.raw_dir), args.source)
     res = run_capabilities(src, service=args.service, url=args.url, layer=args.layer)
     return 1 if any("error" in v for v in res.values()) else 0
 
@@ -63,7 +67,7 @@ def _cmd_fetch(args) -> int:
     from .fetch import run_fetch
     from .grid import resolve_aoi
 
-    src = get_source(load_sources(args.sources), args.source)
+    src = get_source(load_sources(args.sources, raw_dir=args.raw_dir), args.source)
     bbox = None
     align = None
     if args.aoi:
@@ -83,6 +87,16 @@ def _cmd_fetch(args) -> int:
     return 0
 
 
+def _cmd_prepare(args) -> int:
+    from .config import get_source, load_sources
+    from .prepare import prepare_suoli
+
+    src = get_source(load_sources(args.sources, raw_dir=args.raw_dir), args.source)
+    out = prepare_suoli(src)
+    print(f"Fatto: {out}\n(il build lo usa se [sources.{src.id}] local_path è vuoto)")
+    return 0
+
+
 def _cmd_build(args) -> int:
     from .build import run_build
 
@@ -95,6 +109,7 @@ def _cmd_build(args) -> int:
         out_dir=args.out,
         forest_mask=not args.no_forest_mask,
         tiles=not args.no_tiles,
+        raw_dir=args.raw_dir,
     )
     return 0
 
@@ -106,11 +121,15 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "info":
             from .info import run_info
 
-            return run_info(args.sources, args.aoi_file, args.build_config, args.lookups)
+            return run_info(
+                args.sources, args.aoi_file, args.build_config, args.lookups, raw_dir=args.raw_dir
+            )
         if args.cmd == "capabilities":
             return _cmd_capabilities(args)
         if args.cmd == "fetch":
             return _cmd_fetch(args)
+        if args.cmd == "prepare":
+            return _cmd_prepare(args)
         if args.cmd == "build":
             return _cmd_build(args)
     except NotConfigured as exc:

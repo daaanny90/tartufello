@@ -53,11 +53,13 @@ def resample_to_grid(
     band: int = 1,
     default_crs: str = "",
     scale: float = 1.0,
+    nodata: float | None = None,
 ) -> np.ndarray:
     """Porta uno o più raster sulla griglia (float32, NaN = assente).
 
     Più file (es. tile) vengono scritti uno alla volta nella finestra che
-    coprono; dove si sovrappongono vince il primo.
+    coprono; dove si sovrappongono vince il primo. `nodata` si usa solo se il
+    file non lo dichiara (es. tile WCS senza nodata nel GeoTIFF).
     """
     out = np.full(grid.shape, np.nan, dtype="float32")
     for f in raster_files(path):
@@ -85,7 +87,7 @@ def resample_to_grid(
                 source=rasterio.band(src, band),
                 destination=dst,
                 src_crs=src_crs,
-                src_nodata=src.nodata,
+                src_nodata=src.nodata if src.nodata is not None else nodata,
                 dst_transform=rasterio.windows.transform(w, grid.transform),
                 dst_crs=grid.crs,
                 dst_nodata=np.nan,
@@ -178,7 +180,13 @@ def read_vector(
         warnings.warn(f"[{sid}] {path}: CRS assente, uso {default_crs} da sources.toml", stacklevel=2)
         src_crs = default_crs
     bbox = grid.bounds_in(src_crs)
-    gdf = pyogrio.read_dataframe(path, layer=lyr, columns=columns, bbox=bbox, where=where or None)
+    # Con un filtro `where` si leggono tutti i campi: con alcuni driver (es. Shapefile) GDAL ignora
+    # i campi non selezionati prima di filtrare e il filtro non trova più niente.
+    gdf = pyogrio.read_dataframe(
+        path, layer=lyr, columns=None if where else columns, bbox=bbox, where=where or None
+    )
+    if where:
+        gdf = gdf[[c for c in columns if c in gdf.columns] + [gdf.geometry.name]]
     if gdf.crs is None:
         gdf = gdf.set_crs(src_crs)
     gdf = gdf[gdf.geometry.notna() & ~gdf.geometry.is_empty]
@@ -233,3 +241,22 @@ def rasterize_mask(gdf, grid: Grid) -> np.ndarray:
     return rasterize(
         ((g, 1) for g in gdf.geometry), out_shape=grid.shape, transform=grid.transform, fill=0, dtype="uint8"
     ).astype(bool)
+
+
+def rasterize_index(gdf, grid: Grid) -> np.ndarray:
+    """Posizione (0..n-1) del poligono in ogni cella, -1 dove non c'è niente."""
+    if gdf.empty:
+        return np.full(grid.shape, -1, dtype="int32")
+    shapes = ((g, i) for i, g in enumerate(gdf.geometry))
+    return rasterize(shapes, out_shape=grid.shape, transform=grid.transform, fill=-1, dtype="int32")
+
+
+def codes_from_index(index: np.ndarray, values) -> tuple[np.ndarray, list[str]]:
+    """Come `rasterize_codes`, ma partendo dall'indice dei poligoni (un solo rasterize per più attributi)."""
+    labels: dict[str, int] = {}
+    per_poly = np.full(len(values) + 1, -1, dtype="int32")  # ultimo = indice -1
+    for i, v in enumerate(values):
+        k = norm_key(v)
+        if k is not None:
+            per_poly[i] = labels.setdefault(k, len(labels))
+    return per_poly[index], list(labels)

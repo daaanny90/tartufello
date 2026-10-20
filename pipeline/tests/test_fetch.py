@@ -250,6 +250,7 @@ def test_fetch_wcs_xml_error_is_reported(monkeypatch, tmp_path):
         endpoints={"wcs": "https://example.invalid/wcs"},
         raw_dir=tmp_path,
         service={
+            "wcs_version": "2.0.1",
             "wcs_coverage_id": "sint__dtm",
             "wcs_axis_x": "E",
             "wcs_axis_y": "N",
@@ -321,3 +322,157 @@ def test_fetch_wfs_paging_offline(monkeypatch, tmp_path):
     calls.clear()
     fetch_wfs(src, (600000, 930000, 601000, 931000), log=lambda *a: None)
     assert calls == []
+
+
+# --- WCS 1.0.0 (server ArcGIS) e ritentativi HTTP ------------------------------------
+
+DESCRIBE_COV_100 = b"""<?xml version="1.0" encoding="UTF-8"?>
+<CoverageDescription xmlns="http://www.opengis.net/wcs" xmlns:gml="http://www.opengis.net/gml" version="1.0.0">
+<CoverageOffering>
+  <name>SINT_DTM</name><label>DTM sintetico</label>
+  <domainSet><spatialDomain>
+    <gml:Envelope srsName="EPSG:7791"><gml:pos dimension="2">500000 4900000</gml:pos><gml:pos dimension="2">510000 4910000</gml:pos></gml:Envelope>
+    <gml:RectifiedGrid srsName="EPSG:7791" dimension="2"><gml:limits><gml:GridEnvelope><gml:low>0 0</gml:low><gml:high>1999 1999</gml:high></gml:GridEnvelope></gml:limits>
+      <gml:offsetVector dimension="2">5 0</gml:offsetVector><gml:offsetVector dimension="2">0 -5</gml:offsetVector></gml:RectifiedGrid>
+  </spatialDomain></domainSet>
+  <rangeSet><RangeSet><name>r</name><axisDescription><AxisDescription><name>Band</name><values><singleValue>1</singleValue></values></AxisDescription></axisDescription></RangeSet></rangeSet>
+  <supportedCRSs><requestResponseCRSs>EPSG:7791</requestResponseCRSs><nativeCRSs>EPSG:7791</nativeCRSs></supportedCRSs>
+  <supportedFormats nativeFormat="GeoTIFF"><formats>GeoTIFF</formats><formats>PNG</formats></supportedFormats>
+</CoverageOffering>
+</CoverageDescription>"""
+
+
+def test_wcs100_params_and_describe():
+    p = dict(
+        ows.wcs100_getcoverage_params("SINT_DTM", crs="EPSG:7791", bbox=(1, 2, 3, 4), res=5, fmt="GeoTIFF")
+    )
+    assert p["VERSION"] == "1.0.0" and p["COVERAGE"] == "SINT_DTM" and p["CRS"] == "EPSG:7791"
+    assert p["BBOX"] == "1,2,3,4" and p["RESX"] == "5.0" and p["RESY"] == "5.0"
+    assert ("COVERAGE", "X") in ows.describe_coverage_params("X", "1.1.2")
+    assert ("COVERAGEID", "X") in ows.describe_coverage_params("X", "2.0.1")
+    d = ows.parse_describe_coverage(DESCRIBE_COV_100)
+    assert len(d) == 1
+    d = d[0]
+    assert d["id"] == "SINT_DTM" and d["title"] == "DTM sintetico" and d["srs"] == "EPSG:7791"
+    assert d["native_crs"] == ["EPSG:7791"] and d["formats"] == ["GeoTIFF", "PNG"]
+    assert d["offsets"] == ["5 0", "0 -5"] and d["lower"] == "500000 4900000"
+
+
+def _tif_bytes(count: int, dtype: str) -> bytes:
+    import numpy as np
+    from rasterio.io import MemoryFile
+    from rasterio.transform import from_origin
+
+    with MemoryFile() as mem:
+        with mem.open(
+            driver="GTiff",
+            width=4,
+            height=4,
+            count=count,
+            dtype=dtype,
+            crs="EPSG:7791",
+            transform=from_origin(0, 100, 25, 25),
+        ) as ds:
+            ds.write(np.ones((count, 4, 4), dtype=dtype))
+        return mem.read()
+
+
+class _Raw(io.BytesIO):
+    decode_content = False
+
+
+class _StreamResp:
+    def __init__(self, body):
+        self.raw = _Raw(body)
+
+
+def _wcs100_source(tmp_path):
+    return Source(
+        id="dtm",
+        crs="EPSG:7791",
+        endpoints={"wcs": "https://example.invalid/wcs"},
+        raw_dir=tmp_path,
+        service={
+            "wcs_version": "1.0.0",
+            "wcs_coverage_id": "SINT_DTM",
+            "wcs_format": "GeoTIFF",
+            "wcs_res": 25,
+        },
+    )
+
+
+def test_fetch_wcs100_tiles(monkeypatch, tmp_path):
+    from fiuto_pipeline.fetch import download
+
+    calls = []
+
+    def fake_get(sess, url, params=None, stream=False):
+        calls.append(dict(params))
+        return _StreamResp(_tif_bytes(1, "float32"))
+
+    monkeypatch.setattr(download, "get", fake_get)
+    src = _wcs100_source(tmp_path)
+    out = fetch_wcs(src, (0, 0, 7000, 3000), tile_size=5000, log=lambda *a: None)
+    assert len(list(out.glob("*.tif"))) == 2 and len(calls) == 2
+    assert all(c["VERSION"] == "1.0.0" and c["CRS"] == "EPSG:7791" and c["RESX"] == "25.0" for c in calls)
+    assert src.data_path() == out
+    calls.clear()
+    fetch_wcs(src, (0, 0, 7000, 3000), tile_size=5000, log=lambda *a: None)
+    assert calls == []  # dalla cache
+
+
+def test_fetch_wcs_refuses_rgba_image(monkeypatch, tmp_path):
+    from fiuto_pipeline.fetch import download
+
+    monkeypatch.setattr(download, "get", lambda *a, **k: _StreamResp(_tif_bytes(4, "uint8")))
+    with pytest.raises(FiutoError, match="immagine"):
+        fetch_wcs(_wcs100_source(tmp_path), (0, 0, 100, 100), log=lambda *a: None)
+    assert not list((tmp_path / "dtm").rglob("*.tif"))
+
+
+def test_fetch_wcs_requires_version_specific_ids(tmp_path):
+    src = _wcs100_source(tmp_path)
+    src.service.pop("wcs_res")
+    with pytest.raises(NotConfigured, match="wcs_res"):
+        fetch_wcs(src, (0, 0, 1, 1))
+    src.service["wcs_version"] = "1.1.2"
+    with pytest.raises(ConfigError, match="non gestito"):
+        fetch_wcs(src, (0, 0, 1, 1))
+
+
+class _Resp:
+    def __init__(self, status, url="https://example.invalid/x"):
+        self.status_code, self.url, self.text = status, url, "errore"
+
+    def close(self):
+        pass
+
+
+class _FlakySession:
+    def __init__(self, outcomes):
+        self.outcomes = list(outcomes)
+        self.calls = 0
+
+    def get(self, url, params=None, timeout=None, stream=False):
+        self.calls += 1
+        o = self.outcomes.pop(0)
+        if isinstance(o, Exception):
+            raise o
+        return o
+
+
+def test_http_get_retries(monkeypatch):
+    import requests
+
+    from fiuto_pipeline.fetch import http
+
+    monkeypatch.setattr(http, "_sleep", lambda s: None)
+    sess = _FlakySession([requests.ConnectionError("chiusa"), _Resp(503), _Resp(200)])
+    assert http.get(sess, "https://example.invalid/x").status_code == 200 and sess.calls == 3
+    sess = _FlakySession([requests.ConnectionError("chiusa")] * (http.RETRIES + 1))
+    with pytest.raises(FiutoError, match="tentativi"):
+        http.get(sess, "https://example.invalid/x")
+    sess = _FlakySession([_Resp(404)])
+    with pytest.raises(FiutoError, match="HTTP 404"):
+        http.get(sess, "https://example.invalid/x")
+    assert sess.calls == 1  # 404 non si ritenta

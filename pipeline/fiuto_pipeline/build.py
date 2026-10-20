@@ -33,13 +33,29 @@ from .score import build_report, combine, write_score_geotiff, write_unmapped_cs
 # parametro -> sorgenti candidate, in ordine di preferenza
 PARAM_SOURCES = {
     "bedrock": ["geologia"],
-    "ph": ["ph"],
+    "ph": ["ph", "suoli"],  # raster regionale del pH se c'è, altrimenti profili della carta dei suoli
     "caco3": ["suoli"],
     "texture": ["suoli"],
     "elevation": ["dtm", "dem10"],
     "forest_type": ["forestale"],
     "hosts": ["forestale"],
 }
+
+
+
+def attribution(srcs: list) -> str:
+    """Attribuzione per il metadata dei tile: la CC BY chiede di citare fonte e licenza.
+
+    L'app la mostra nell'angolo della mappa, quindi resta corta: titoli abbreviati
+    e raggruppati per licenza. I titoli completi sono in metadata["sources"].
+    """
+    by_lic: dict[str, list[str]] = {}
+    for s in srcs:
+        lic = "CC BY 4.0" if s.license.strip().startswith("CC BY 4.0") else "licenza da verificare"
+        short = (s.title or s.id).split(" - ")[0].split(" (")[0]
+        by_lic.setdefault(lic, []).append(short)
+    parts = [f"{lic}: {', '.join(titles)}" for lic, titles in by_lic.items()]
+    return "Dati © Regione Emilia-Romagna, " + "; ".join(parts) + ". Elaborazione fiuto (VTH)."
 
 
 def _derive_one(pid: str, src: Source, grid: Grid, model, mask, lookup_dir):
@@ -66,11 +82,12 @@ def run_build(
     out_dir: Path | None = None,
     forest_mask: bool = True,
     tiles: bool = True,
+    raw_dir: Path | None = None,
     log=print,
 ) -> dict:
     cfg = load_build_config(build_path)
     model = load_model(cfg.model_path)
-    sources = load_sources(sources_path)
+    sources = load_sources(sources_path, raw_dir=raw_dir)
     aois = load_aois(aoi_path)
     if aoi_name not in aois:
         raise ConfigError(f"AOI '{aoi_name}' non trovata in aoi.toml (disponibili: {', '.join(aois)})")
@@ -91,9 +108,14 @@ def run_build(
     unmapped: dict[str, list] = {}
     used: dict[str, set] = {}
 
+    lookups_used: dict[str, str] = {}  # param -> tabella
+    drafts: dict[str, int] = {}  # tabella -> righe BOZZA
+
     def ok(res):
         if res.unmapped:
             unmapped[res.param] = res.unmapped
+        if res.lookup:
+            lookups_used[res.param] = res.lookup
         if not (res.array != NA).any():
             status[res.param] = {"status": "nessun valore", "source": res.source, "detail": res.detail}
             log(
@@ -103,6 +125,11 @@ def run_build(
             return
         params[res.param] = res.array
         status[res.param] = {"status": "ok", "source": res.source, "detail": res.detail}
+        if res.lookup:
+            status[res.param]["lookup"] = res.lookup
+            if res.drafts:
+                drafts[res.lookup] = res.drafts
+                status[res.param]["lookup_bozza"] = res.drafts
         used.setdefault(res.source, set()).add(res.param)
         log(
             f"  + {res.param}: da {res.source}"
@@ -176,7 +203,7 @@ def run_build(
     if unmapped:
         out_dir.mkdir(parents=True, exist_ok=True)
     for pid, rows in unmapped.items():
-        p = write_unmapped_csv(out_dir / f"da_classificare_{pid}.csv", pid, rows)
+        p = write_unmapped_csv(out_dir / f"da_classificare_{pid}.csv", pid, rows, lookups_used.get(pid, ""))
         if p:
             outputs[f"da_classificare_{pid}"] = str(p)
             log(f"Da classificare per {pid}: {len(rows)} valori -> {p}")
@@ -226,10 +253,19 @@ def run_build(
             "cell_size_m": grid.cell_size,
             "generator": f"fiuto_pipeline {__version__}",
         }
+        metadata["attribution"] = attribution([get_source(sources, sid) for sid in sorted(used)])
         if aoi.approximate:
             metadata["aoi_note"] = "AOI approssimativa: " + (aoi.description or "bbox scritto a mano")
+        warnings_meta = []
         if mask_info["type"] != "bosco":
-            metadata["warning"] = "build di prova senza maschera bosco"
+            warnings_meta.append("build di prova senza maschera bosco")
+        if drafts:
+            warnings_meta.append(
+                "tabelle di lookup in BOZZA, da rivedere: "
+                + ", ".join(f"{t} ({n} righe)" for t, n in sorted(drafts.items()))
+            )
+        if warnings_meta:
+            metadata["warning"] = "; ".join(warnings_meta)
         exp = export_vth(
             params,
             mask,
@@ -282,6 +318,7 @@ def run_build(
         cell_ha=grid.cell_area_ha,
     )
     report["unmapped"] = unmapped
+    report["lookup_bozza"] = drafts
     rpath = out_dir / "report.json"
     rpath.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
 

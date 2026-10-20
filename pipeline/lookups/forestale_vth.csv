@@ -3,3 +3,7 @@ tipo_er,tipo_er_nome,forest_class,hosts,note,fonte
 # forest_class = latifoglie_fresche | misti_freschi | umidi | altri (model/vth-v1.json param "forest_type"). Vuoto = non classificato (255).
 # hosts = 1 se il tipo ha almeno una specie ospite nello strato arboreo (lista hostSpecies del modello, con Ostrya), 0 se nessuna; vuoto = non classificato. Da remoto il massimo è 1 (remote.max).
 # Il build scrive data/build/<aoi>/da_classificare_forest_type.csv (e _hosts) con i tipi mancanti ordinati per superficie.
+# Fase 0 (2026-10-20): classificati solo i tipi che la carta stessa descrive come igrofili/ripariali. La traduzione degli altri tipi forestali ER nelle classi VTH è una domanda aperta (BRIEF §9.4): restano vuoti. Gli ospiti vengono da forestale_specie.csv (hosts_attrs).
+SP20X,Saliceto planiziale a Salix alba,umidi,,BOZZA da rivedere,"Carta forestale 2025 PR, COD_TIPO='SP20X', NOMETIPO='Saliceto planiziale a Salix alba', NOMECAT='Saliceti ripariali' (boschi igrofili/ripariali -> umidi)"
+SP40X,Pioppeto di Pioppo nero,umidi,,BOZZA da rivedere,"Carta forestale 2025 PR, COD_TIPO='SP40X', NOMETIPO='Pioppeto di Pioppo nero', NOMECAT='Pioppeti naturali (boschi igrofili)' (boschi igrofili/ripariali -> umidi)"
+SP50X,Pioppeto di Pioppo bianco,umidi,,BOZZA da rivedere,"Carta forestale 2025 PR, COD_TIPO='SP50X', NOMETIPO='Pioppeto di Pioppo bianco', NOMECAT='Pioppeti naturali (boschi igrofili)' (boschi igrofili/ripariali -> umidi)"

@@ -58,6 +58,12 @@ const track = ref<[number, number][]>([])
 const subs: Subscription[] = []
 
 const synthetic = computed(() => mapFiles.score?.meta?.synthetic === true)
+const metaText = (k: string) => {
+  const v = mapFiles.score?.meta?.[k]
+  return typeof v === 'string' && v.trim() ? v : null
+}
+const scoreWarning = computed(() => metaText('warning'))
+const notesOpen = ref(false)
 const offlineMissing = computed(() => settings.basemap === 'offline' && !mapFiles.basemap)
 
 const paramOptions = computed(() =>
@@ -232,6 +238,14 @@ onMounted(() => {
   })
   m.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left')
   m.on('style.load', () => addOverlays(m))
+  // L'attribuzione compatta parte aperta e copre mezza mappa sul telefono: la chiudo, resta il pulsante (i).
+  const collapseAttribution = () => {
+    const el = container.value?.querySelector('.maplibregl-ctrl-attrib.maplibregl-compact-show')
+    el?.classList.remove('maplibregl-compact-show')
+    el?.removeAttribute('open')
+  }
+  m.once('load', collapseAttribution)
+  m.once('idle', collapseAttribution)
   m.on('click', onClick)
   m.on('dragstart', () => (ui.follow = false))
   m.on('moveend', () => {
@@ -335,6 +349,11 @@ const legend = computed(() => {
 
     <div class="notices">
       <div v-if="synthetic" class="banner bad small">Mappa di prova con dati SINTETICI: non usarla per cercare.</div>
+      <div v-else-if="scoreWarning" class="banner warn small" @click="notesOpen = !notesOpen">
+        Mappa in bozza: alcune classificazioni sono da rivedere.
+        <template v-if="notesOpen"><br />{{ scoreWarning }}<template v-if="metaText('aoi_note')"><br />{{ metaText('aoi_note') }}</template></template>
+        <template v-else> (tocca per i dettagli)</template>
+      </div>
       <div v-if="!mapFiles.score" class="banner warn small">
         Nessuna mappa di idoneità caricata. <RouterLink to="/impostazioni">Importala</RouterLink> dal file della pipeline.
       </div>

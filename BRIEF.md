@@ -241,3 +241,19 @@ Prese costruendo la prima versione. Dove si discostano dal resto del brief, valg
 - **Tesserino** (art. 8): si ottiene con un esame a quiz su specie, modalità di raccolta e leggi; vale in tutta Italia. Va fatto prima di giugno 2027.
 - **Parchi e aree pubbliche** (art. 21): nei parchi regionali e nelle riserve valgono atti istitutivi e regolamenti propri; nelle aree pubbliche gli enti possono limitare giorni e accessi.
 - Fonte delle regole: testo coordinato non ufficiale della L.R. 24/1991 (modifiche fino alla L.R. 17/2016), URL in §10, letto il 20/10/2026.
+
+### Dati: esiti della verifica (20/10/2026)
+
+Dettagli, metodo e decisioni aperte in `pipeline/FASE0.md`; valori verificati in `pipeline/sources.toml`.
+
+- **DTM 5x5 (ed. 2025)**: ok, CC BY 4.0. Il WCS del §5 (`wcs/dtm10k_ed2014`) è dismesso (serve un'immagine); si usa `https://servizigis.regione.emilia-romagna.it/wcs/dtm5x5` (WCS 1.0.0, float32, EPSG:7791). Quadranti zip ed. 2025 su mappegis.
+- **DEM 10x10**: non trovato (il link CAPP ora porta alla home del nuovo geoportale); superato dal DTM 5x5.
+- **Carta dei suoli 1:50.000 (ed. 2021)**: ok, CC BY 4.0, zip `https://mappegis.regione.emilia-romagna.it/moka/ckan/suolo/Carta_Suoli_50k.zip`. Copre solo il 37% del medio Appennino. Niente attributi diretti di tessitura/CaCO3/pH: si ricavano dai profili del foglio Excel incluso (suolo prevalente, 0-30 cm).
+- **Carta del pH 0-30 cm (2a ed. 2023)**: raster 100 m su MinERva (`https://datacatalog.regione.emilia-romagna.it/catalogCTA/group/suolo`), non raggiungibile dall'ambiente cloud: da scaricare a mano. Licenza da verificare.
+- **Carta geologica 50k**: ok, CC BY 4.0, zip `Unita_geologiche_50K.zip` e WFS `wfs/geologia50k`. Descrizioni litologiche nel 75% dei poligoni della Val Baganza.
+- **Carta forestale regionale 2025**: ok, shapefile per provincia su `https://ambiente.regione.emilia-romagna.it/it/parchi-natura2000/foreste/quadro-conoscitivo/sistema-informativo-regionale/carta-forestale-regionale` con tipi forestali e specie prevalenti. Licenza: CC BY 4.0 per le note legali del sito (nessuna licenza propria sulla pagina).
+- **Carta della vegetazione**: solo carte di singoli parchi (nel parmense Alta Val Parma e Cedra, Carrega, Taro, Stirone).
+- **Parchi e Natura 2000**: ok, CC BY 4.0, WFS `wfs/areeprotette_natura2000` e shapefile (Natura 2000 aggiornata all'8/7/2024).
+- **Istituti faunistici (art. 15)**: lo strato esiste nel webGIS del Piano faunistico venatorio (`https://agri.regione.emilia-romagna.it/MotoreGis/PianoFaunisticoVenatorio/gis.html`, export shapefile), host non raggiungibile dall'ambiente cloud: da esportare a mano. Licenza da verificare.
+- **CAPP, ERG5**: non verificati (host non raggiungibili; CAPP senza download noto).
+- Nota: i dati regionali oggi sono in EPSG:7791 (RDN2008 / UTM 32N) o 25832, non più 5659; la pipeline riproietta.

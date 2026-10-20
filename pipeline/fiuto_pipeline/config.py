@@ -51,6 +51,7 @@ class Source:
     endpoints: dict[str, str] = field(default_factory=dict)
     service: dict[str, Any] = field(default_factory=dict)
     attributes: dict[str, Any] = field(default_factory=dict)
+    prepare: dict[str, Any] = field(default_factory=dict)
     base_dir: Path = PIPELINE_DIR
     raw_dir: Path = RAW_DIR
 
@@ -67,8 +68,17 @@ class Source:
         v = self.service.get(key, default)
         return default if _is_empty(v) else v
 
+    def prep(self, key: str, default: Any = None) -> Any:
+        v = self.prepare.get(key, default)
+        return default if _is_empty(v) else v
+
     def missing(self, section: str, *keys: str) -> list[str]:
-        table = {"attributes": self.attributes, "service": self.service, "endpoints": self.endpoints}[section]
+        table = {
+            "attributes": self.attributes,
+            "service": self.service,
+            "endpoints": self.endpoints,
+            "prepare": self.prepare,
+        }[section]
         return [f"{section}.{k}" for k in keys if _is_empty(table.get(k))]
 
     def require(self, section: str, *keys: str, what: str = "") -> None:
@@ -147,6 +157,7 @@ def load_sources(path: str | Path | None = None, raw_dir: Path | None = None) ->
             endpoints=dict(s.get("endpoints", {})),
             service=dict(s.get("service", {})),
             attributes=dict(s.get("attributes", {})),
+            prepare=dict(s.get("prepare", {})),
             base_dir=p.parent,
             raw_dir=raw_dir or RAW_DIR,
         )

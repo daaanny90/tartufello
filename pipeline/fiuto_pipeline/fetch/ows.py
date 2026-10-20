@@ -36,11 +36,19 @@ def describe_feature_type_params(typename: str, version: str = "2.0.0") -> list[
 
 
 def describe_coverage_params(coverage_id: str, version: str = "2.0.1") -> list[tuple[str, str]]:
+    """DescribeCoverage: 2.0.x usa COVERAGEID, 1.x (es. ArcGIS Server) usa COVERAGE con 1.0.0."""
+    if version.startswith("2"):
+        return [
+            ("SERVICE", "WCS"),
+            ("VERSION", "2.0.1"),
+            ("REQUEST", "DescribeCoverage"),
+            ("COVERAGEID", coverage_id),
+        ]
     return [
         ("SERVICE", "WCS"),
-        ("VERSION", version),
+        ("VERSION", "1.0.0"),
         ("REQUEST", "DescribeCoverage"),
-        ("COVERAGEID", coverage_id),
+        ("COVERAGE", coverage_id),
     ]
 
 
@@ -106,6 +114,29 @@ def wcs_getcoverage_params(
         ("COVERAGEID", coverage_id),
         ("SUBSET", f"{axis_x}({minx!r},{maxx!r})"),
         ("SUBSET", f"{axis_y}({miny!r},{maxy!r})"),
+        ("FORMAT", fmt),
+    ]
+
+
+def wcs100_getcoverage_params(
+    coverage: str,
+    *,
+    crs: str,
+    bbox: tuple[float, float, float, float],
+    res: float,
+    fmt: str,
+) -> list[tuple[str, str]]:
+    """GetCoverage WCS 1.0.0 (BBOX + RESX/RESY nel CRS indicato)."""
+    minx, miny, maxx, maxy = bbox
+    return [
+        ("SERVICE", "WCS"),
+        ("VERSION", "1.0.0"),
+        ("REQUEST", "GetCoverage"),
+        ("COVERAGE", coverage),
+        ("CRS", crs),
+        ("BBOX", f"{minx!r},{miny!r},{maxx!r},{maxy!r}"),
+        ("RESX", repr(float(res))),
+        ("RESY", repr(float(res))),
         ("FORMAT", fmt),
     ]
 
@@ -332,11 +363,43 @@ def parse_describe_feature_type(data: bytes | str) -> dict[str, list[tuple[str, 
 
 
 def parse_describe_coverage(data: bytes | str) -> list[dict]:
+    """DescribeCoverage 2.0.x (CoverageDescription) o 1.0.0 (CoverageOffering)."""
     root = parse_xml(data)
     exc = exception_message(root)
     if exc:
         raise ValueError(f"il server ha risposto con un errore: {exc}")
     out = []
+    offerings = list(walk(root, "CoverageOffering"))
+    if offerings:  # WCS 1.0.0
+        for co in offerings:
+            env = next(walk(co, "Envelope"), None)
+            pos = [text(p) for p in kids(env, "pos")] if env is not None else []
+            grid_env = next(walk(co, "GridEnvelope"), None)
+            fmts = next(walk(co, "supportedFormats"), None)
+            nulls = next(walk(co, "nullValues"), None)
+            out.append(
+                {
+                    "id": text(co, "name"),
+                    "title": text(co, "label"),
+                    "srs": attr(env, "srsName") if env is not None else "",
+                    "axis_labels": [],
+                    "lower": pos[0] if pos else "",
+                    "upper": pos[1] if len(pos) > 1 else "",
+                    "grid_low": text(grid_env, "low") if grid_env is not None else "",
+                    "grid_high": text(grid_env, "high") if grid_env is not None else "",
+                    "offsets": [text(o) for o in walk(co, "offsetVector")],
+                    "fields": [
+                        text(v)
+                        for v in walk(co, "singleValue")
+                        if nulls is None or v not in list(nulls.iter())
+                    ],
+                    "native_crs": [text(c) for c in walk(co, "nativeCRSs")],
+                    "formats": [text(f) for f in walk(co, "formats")],
+                    "native_format": attr(fmts, "nativeFormat") if fmts is not None else "",
+                    "null_values": [text(v) for v in walk(nulls, "singleValue")] if nulls is not None else [],
+                }
+            )
+        return out
     for cd in walk(root, "CoverageDescription"):
         env = next(walk(cd, "Envelope"), None)
         grid_env = next(walk(cd, "GridEnvelope"), None)
@@ -344,6 +407,7 @@ def parse_describe_coverage(data: bytes | str) -> list[dict]:
         out.append(
             {
                 "id": text(cd, "CoverageId") or attr(cd, "id"),
+                "title": "",
                 "srs": attr(env, "srsName") if env is not None else "",
                 "axis_labels": (attr(env, "axisLabels") if env is not None else "").split(),
                 "lower": text(env, "lowerCorner") if env is not None else "",
@@ -352,7 +416,10 @@ def parse_describe_coverage(data: bytes | str) -> list[dict]:
                 "grid_high": text(grid_env, "high") if grid_env is not None else "",
                 "offsets": offsets,
                 "fields": [attr(f, "name") for f in walk(cd, "field")],
+                "native_crs": [],
+                "formats": [],
                 "native_format": text(next(walk(cd, "nativeFormat"), None)),
+                "null_values": [],
             }
         )
     return out

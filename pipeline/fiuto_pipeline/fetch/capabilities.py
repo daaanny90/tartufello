@@ -67,21 +67,27 @@ def print_wcs(caps: dict, descs: list[dict], out) -> None:
     for c in caps["coverages"]:
         print(f"  {c['id']} | {c['title']}", file=out)
     for d in descs:
-        print(f"  DescribeCoverage {d['id']}:", file=out)
-        print(f"      srsName: {d['srs']}", file=out)
+        print(
+            f"  DescribeCoverage {d['id']}" + (f" ({d['title']})" if d.get("title") else "") + ":", file=out
+        )
+        print(
+            f"      srsName: {d['srs']}; CRS nativo: {', '.join(d.get('native_crs') or []) or '-'}", file=out
+        )
         print(f"      assi: {' '.join(d['axis_labels']) or '-'}", file=out)
         print(f"      estensione: {d['lower']} -> {d['upper']}", file=out)
         print(
             f"      griglia: {d['grid_low']} -> {d['grid_high']}; passi: {'; '.join(d['offsets'])}", file=out
         )
         print(
-            f"      bande: {', '.join(d['fields']) or '-'}; formato nativo: {d['native_format'] or '-'}",
+            f"      bande: {', '.join(d['fields']) or '-'}; formati: {', '.join(d.get('formats') or []) or '-'}"
+            f"; nativo: {d['native_format'] or '-'}; nodata: {', '.join(d.get('null_values') or []) or '-'}",
             file=out,
         )
     print(
-        "-> in sources.toml: service.wcs_coverage_id, wcs_axis_x / wcs_axis_y (dagli assi),\n"
-        "   wcs_format (uno dei formati sopra, GeoTIFF se c'è). Il CRS della coverage deve\n"
-        "   coincidere con `crs` della sorgente (atteso EPSG:5659, da confermare con srsName).",
+        '-> in sources.toml: service.wcs_version ("2.0.1", oppure "1.0.0" per server 1.x), wcs_coverage_id,\n   wcs_format;'
+        "   per 2.0.1 anche wcs_axis_x / wcs_axis_y (dagli assi), per 1.0.0 wcs_res (passo griglia).\n"
+        "   `crs` della sorgente = CRS nativo della coverage. Controlla che sia un dato di valori\n"
+        "   (es. float32 di quote) e non un'immagine colorata: prova un GetCoverage piccolo.",
         file=out,
     )
 
@@ -164,7 +170,8 @@ def run_capabilities(
                     print(f"{len(ids)} coverage: per i dettagli rilancia con --layer <coverage id>", file=out)
                 else:
                     for cid in ids:
-                        r = get(sess, base, params=ows.describe_coverage_params(cid))
+                        params = ows.describe_coverage_params(cid, caps["version"] or "2.0.1")
+                        r = get(sess, base, params=params)
                         _save(src, f"describe_{_safe(cid)}.xml", r.content)
                         try:
                             descs += ows.parse_describe_coverage(r.content)

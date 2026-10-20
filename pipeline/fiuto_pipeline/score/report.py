@@ -11,12 +11,19 @@ from ..lookups import SPECS
 from ..model import NA, Model
 from .combine import ScoreResult
 
-# param -> (tabella di lookup, colonna del valore, colonna del nome)
-UNMAPPED_TARGET = {
-    "texture": ("suoli_tessitura", "valore_er", None),
-    "bedrock": ("geologia_vth", "unit_code", "unit_name"),
-    "forest_type": ("forestale_vth", "tipo_er", "tipo_er_nome"),
-    "hosts": ("forestale_vth", "tipo_er", "tipo_er_nome"),
+# tabella di lookup -> (colonna del valore, colonna del nome)
+LOOKUP_COLUMNS = {
+    "suoli_tessitura": ("valore_er", None),
+    "geologia_vth": ("unit_code", "unit_name"),
+    "forestale_vth": ("tipo_er", "tipo_er_nome"),
+    "forestale_specie": ("specie_er", "specie_nome"),
+}
+# tabella di default per parametro (se il risultato non la indica)
+DEFAULT_LOOKUP = {
+    "texture": "suoli_tessitura",
+    "bedrock": "geologia_vth",
+    "forest_type": "forestale_vth",
+    "hosts": "forestale_vth",
 }
 
 
@@ -86,11 +93,12 @@ def build_report(
     }
 
 
-def write_unmapped_csv(path: Path, param: str, rows: list[dict]) -> Path | None:
+def write_unmapped_csv(path: Path, param: str, rows: list[dict], lookup: str = "") -> Path | None:
     """CSV con le colonne della tabella di lookup + superfici, pronto da completare."""
-    if not rows or param not in UNMAPPED_TARGET:
+    table = lookup or DEFAULT_LOOKUP.get(param, "")
+    if not rows or table not in LOOKUP_COLUMNS:
         return None
-    table, key_col, name_col = UNMAPPED_TARGET[param]
+    key_col, name_col = LOOKUP_COLUMNS[table]
     cols = list(SPECS[table][1]) + ["ha", "ha_bosco", "in_tabella"]
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:

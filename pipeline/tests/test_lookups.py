@@ -17,11 +17,18 @@ from fiuto_pipeline.paths import LOOKUPS_DIR
 from .conftest import X0, Y0, write_text, write_vector
 
 
-def test_shipped_lookups_are_empty_templates():
-    # Le tabelle nel repo hanno solo intestazione e commenti: nessun codice inventato.
+def test_shipped_lookups_are_sourced_drafts(model):
+    # Le tabelle nel repo contengono solo bozze tratte dai testi dei dataset (Fase 0):
+    # ogni riga cita la fonte, è segnata BOZZA e usa categorie valide del modello.
     for name in SPECS:
         lk = load_lookup(name, LOOKUPS_DIR)
-        assert lk.rows == {}, f"{name}.csv non dovrebbe contenere righe finché non si verifica il dato reale"
+        for k, row in lk.rows.items():
+            assert row.get("fonte"), f"{name}.csv: '{k}' senza fonte"
+            assert "BOZZA" in row.get("note", ""), f"{name}.csv: '{k}' non segnata come BOZZA"
+    category_map(load_lookup("geologia_vth", LOOKUPS_DIR), "vth_class", model.categories("bedrock"))
+    category_map(load_lookup("suoli_tessitura", LOOKUPS_DIR), "texture_id", model.categories("texture"))
+    category_map(load_lookup("forestale_vth", LOOKUPS_DIR), "forest_class", model.categories("forest_type"))
+    int_map(load_lookup("forestale_specie", LOOKUPS_DIR), "host", model.remote_max("hosts"))
 
 
 def test_comments_and_normalization(tmp_path):
@@ -187,3 +194,96 @@ def test_derive_forest_type_and_hosts(tmp_path, grid, model):
     assert {u["value"] for u in out["hosts"].unmapped} == {"T_SINT_2", "T_SINT_9"}
     t2 = next(u for u in out["hosts"].unmapped if u["value"] == "T_SINT_2")
     assert t2["in_table"] is True  # in tabella ma senza hosts compilato
+
+
+# --- ospiti dalle specie prevalenti ----------------------------------------------------
+
+
+def test_combine_hosts_rules():
+    from fiuto_pipeline.derive.params import combine_hosts
+
+    # celle: [ospite+?, nonospite+nonospite, nonospite+ignota, assente, ?+ospite, nonospite+assente]
+    v1 = np.array([1, 0, 0, NA, NA, 0], dtype="uint8")
+    p1 = np.array([1, 1, 1, 0, 1, 1], dtype=bool)
+    v2 = np.array([NA, 0, NA, NA, 1, NA], dtype="uint8")
+    p2 = np.array([1, 1, 1, 0, 1, 0], dtype=bool)
+    out = combine_hosts([v1, v2], [p1, p2])
+    assert out.tolist() == [1, 0, NA, NA, 1, 0]
+
+
+def test_derive_forest_hosts_from_species(tmp_path, grid, model):
+    gpkg = write_vector(
+        tmp_path / "for_sint.gpkg",
+        [
+            {
+                "tipo_sint": "T1",
+                "sp1": "S_OSP",
+                "sp2": "S_NO",
+                "n1": "Specie ospite sint",
+                "n2": "Non ospite sint",
+            },
+            {
+                "tipo_sint": "T1",
+                "sp1": "S_NO",
+                "sp2": "S_NO",
+                "n1": "Non ospite sint",
+                "n2": "Non ospite sint",
+            },
+            {
+                "tipo_sint": "T1",
+                "sp1": "S_NO",
+                "sp2": "S_IGNOTA",
+                "n1": "Non ospite sint",
+                "n2": "Ignota sint",
+            },
+        ],
+        [
+            box(X0, Y0, X0 + 500, Y0 + 1000),
+            box(X0 + 500, Y0, X0 + 1000, Y0 + 1000),
+            box(X0 + 1000, Y0, X0 + 1500, Y0 + 1000),
+        ],
+    )
+    write_text(tmp_path / "forestale_vth.csv", "tipo_er,tipo_er_nome,forest_class,hosts,note,fonte\n")
+    write_text(
+        tmp_path / "forestale_specie.csv",
+        """
+        specie_er,specie_nome,host,note,fonte
+        S_OSP,Specie ospite sint,1,BOZZA da rivedere,test
+        S_NO,Non ospite sint,0,BOZZA da rivedere,test
+        """,
+    )
+    src = _src(
+        "forestale",
+        gpkg,
+        forest_type_attr="tipo_sint",
+        hosts_attrs=["sp1", "sp2"],
+        hosts_name_attrs=["n1", "n2"],
+    )
+    out = derive_forest(src, grid, model, lookup_dir=tmp_path)
+    h = out["hosts"]
+    assert (h.array[:, :20] == 1).all() and (h.array[:, 20:40] == 0).all()
+    assert (h.array[:, 40:60] == NA).all() and (h.array[:, 60:] == NA).all()
+    assert h.lookup == "forestale_specie" and h.drafts == 2
+    assert [u["value"] for u in h.unmapped] == ["S_IGNOTA"] and h.unmapped[0]["name"] == "Ignota sint"
+    assert (out["forest_type"].array == NA).all() and out["forest_type"].lookup == "forestale_vth"
+
+
+def test_unmapped_csv_uses_species_schema(tmp_path):
+    import csv
+
+    from fiuto_pipeline.score import write_unmapped_csv
+
+    rows = [{"value": "S_X", "name": "Specie X", "ha": 1.5, "ha_bosco": 1.0, "in_table": False}]
+    p = write_unmapped_csv(tmp_path / "h.csv", "hosts", rows, "forestale_specie")
+    rec = list(csv.DictReader(open(p, encoding="utf-8")))[0]
+    assert rec["specie_er"] == "S_X" and rec["specie_nome"] == "Specie X" and rec["host"] == ""
+
+
+def test_draft_count(tmp_path):
+    from fiuto_pipeline.lookups import draft_count
+
+    write_text(
+        tmp_path / "geologia_vth.csv",
+        "unit_code,unit_name,vth_class,note,fonte\nA,,calcari,BOZZA da rivedere,x\nB,,marne,verificata,x\n",
+    )
+    assert draft_count(load_lookup("geologia_vth", tmp_path)) == 1

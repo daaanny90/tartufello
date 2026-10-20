@@ -1,184 +1,202 @@
-# Sorgenti dati di fiuto (BRIEF.md §5).
+# Sorgenti dati di fiuto (BRIEF.md §5). Verifica Fase 0: 2026-10-20 (dettagli in FASE0.md).
 #
 # Regole:
-# - Endpoint SOLO come scritti nel brief. Tutto il resto resta vuoto ("") finché
-#   non è verificato: la pipeline si rifiuta di indovinare.
-# - status: "da verificare" | "ok" | "non trovato". Si passa a "ok" solo dopo
-#   aver controllato davvero (capabilities, download, attributi), e l'esito va
-#   scritto anche in BRIEF.md con URL e data (vedi CLAUDE.md).
+# - Solo valori visti in risposte reali (capabilities, download, metadati). Il resto resta vuoto.
+# - status: "ok" (dato raggiungibile e controllato) | "da verificare" | "non trovato".
 # - local_path: file (o cartella di raster) scaricato a mano; relativo a pipeline/.
-#   Se vuoto, il build usa l'ultimo `fetch` in data/raw/<id>/.
-# - [*.service]: identificativi per scaricare da WFS/WCS (da `capabilities`).
-# - [*.attributes]: nomi di layer e attributi che servono al derive.
+#   Se vuoto, il build usa l'ultimo `fetch`/`prepare` in data/raw/<id>/.
+# - [*.service]: identificativi per scaricare da WFS/WCS. [*.attributes]: layer e attributi per il derive.
 #
-# Fase 0: `python -m fiuto_pipeline info` mostra cosa manca.
+# Nota CRS: i servizi e i pacchetti regionali oggi sono in EPSG:7791 (RDN2008 / UTM 32N) o EPSG:25832;
+# la 1:50.000 geologica in zip è ancora in UTMRER (= parametri di EPSG:5659). La pipeline riproietta tutto
+# sulla griglia di lavoro (build.toml).
 
 [defaults]
-crs = "EPSG:5659"   # Monte Mario / TM Emilia-Romagna, CRS dei dati regionali (brief §5)
+crs = "EPSG:5659"
 
 # ---------------------------------------------------------------------------
 [sources.dtm]
-title = "DTM 5x5 (ed. 2014)"
+title = "DTM 5x5 - ultima edizione (ed. 2025)"
 use = "quota (in futuro pendenza e TPI)"
 params = ["elevation"]
-status = "da verificare"
-status_note = "endpoint da metadati INSPIRE, non ancora interrogati"
-license = "da verificare (attesa CC BY)"
-crs = "EPSG:5659"
+status = "ok"
+status_note = "2026-10-20: WCS 1.0.0 https://servizigis.regione.emilia-romagna.it/wcs/dtm5x5 restituisce float32 a 5 m in EPSG:7791 (coverage DTM5X5_RDN32_RMD, dal catalogo geoportale). Il WCS del brief (wcs/dtm10k_ed2014) è dismesso: coverage '1' etichettata 'Servizio_dismesso_RDN32_RMD', 4 bande uint8 (immagine)."
+license = "CC BY 4.0 (PDF di licenza nel pacchetto DTM5x5_ed2025_NO_7791.zip; catalogo geoportale, voce 'DTM 5x5 - ultima edizione'), letta il 2026-10-20"
+crs = "EPSG:7791"
 local_path = ""
 
 [sources.dtm.endpoints]
-wcs = "https://servizigis.regione.emilia-romagna.it/wcs/dtm10k_ed2014"
-# Nel brief è scritto ".../wms/dtm10k_ed2014": stessa base del WCS.
-wms = "https://servizigis.regione.emilia-romagna.it/wms/dtm10k_ed2014"
-metadata = "https://inspire-geoportal.ec.europa.eu/srv/api/records/r_emiro:2016-08-08T155835"
+wcs = "https://servizigis.regione.emilia-romagna.it/wcs/dtm5x5"
+wms = "https://servizigis.regione.emilia-romagna.it/wms/dtm5x5"
+pagina_download = "https://geoportale.regione.emilia-romagna.it/download-data/dati-e-prodotti-cartografici-preconfezionati/altimetria/dtm-5m-x-5m-ultima-edizione"
+# Quadranti GeoTIFF zippati (alternativa al WCS): estensioni lette dagli header TIFF, nodata -9999.
+zip_no = "https://mappegis.regione.emilia-romagna.it/archiviogis/DTM/DTM5x5_ed2025_NO_7791.zip"  # x 508200-655500, y 4922500-5002000
+zip_ne = "https://mappegis.regione.emilia-romagna.it/archiviogis/DTM/DTM5x5_ed2025_NE_7791.zip"  # x 655500-802800, y 4922500-5002000
+zip_so = "https://mappegis.regione.emilia-romagna.it/archiviogis/DTM/DTM5x5_ed2025_SO_7791.zip"  # x 508200-655500, y 4843000-4922500
+zip_se = "https://mappegis.regione.emilia-romagna.it/archiviogis/DTM/DTM5x5_ed2025_SE_7791.zip"  # x 655500-802800, y 4843000-4922500
+# Dal brief, non più utilizzabili (2026-10-20):
+wcs_brief_dismesso = "https://servizigis.regione.emilia-romagna.it/wcs/dtm10k_ed2014"
+wms_brief = "https://servizigis.regione.emilia-romagna.it/wms/dtm10k_ed2014"
+metadata = "https://inspire-geoportal.ec.europa.eu/srv/api/records/r_emiro:2016-08-08T155835"  # rimanda a data.europa.eu, non raggiungibile da qui
 
 [sources.dtm.service]
-wcs_coverage_id = ""    # da `capabilities dtm` (elenco Coverage)
-wcs_axis_x = ""         # etichetta asse est da DescribeCoverage (axisLabels)
-wcs_axis_y = ""         # etichetta asse nord da DescribeCoverage (axisLabels)
-wcs_format = ""         # un formato GeoTIFF tra quelli elencati da capabilities
-wcs_tile_size_m = 5000  # lato dei riquadri GetCoverage (5 km = 1000x1000 px a 5 m)
+wcs_version = "1.0.0"                 # il server dichiara 1.0.0-1.1.2; GetCoverage provato in 1.0.0
+wcs_coverage_id = "DTM5X5_RDN32_RMD"  # DescribeCoverage: EPSG:7791, passo 5 m, 1 banda
+wcs_format = "GeoTIFF"
+wcs_res = 5
+wcs_tile_size_m = 5000
 
 [sources.dtm.attributes]
 band = 1
+nodata = -9999  # il GeoTIFF del WCS non lo dichiara; -9999 è il nodata dichiarato dai TIFF dello stesso prodotto (quadranti zip)
 
 # ---------------------------------------------------------------------------
 [sources.dem10]
 title = "DEM 10x10 (usato dalla CAPP)"
-use = "alternativa più leggera al DTM 5x5 per la quota"
+use = "alternativa più leggera al DTM 5x5"
 params = ["elevation"]
-status = "da verificare"
-status_note = "link dalle note CAPP; è una pagina di download, non un file"
-license = "da verificare (attesa CC BY)"
-crs = "EPSG:5659"
-local_path = ""     # file o cartella di tile estratti dallo zip
+status = "non trovato"
+status_note = "2026-10-20: il link del brief (geoportale .../it/download/prodottiraster) ora reindirizza alla home del nuovo geoportale; nel catalogo 'Altimetria' non c'è un DEM 10x10. Superato dal WCS del DTM 5x5."
+license = ""
+crs = ""
+local_path = ""
 
 [sources.dem10.endpoints]
-page = "http://geoportale.regione.emilia-romagna.it/it/download/prodottiraster"
-download = ""       # link diretto al file: da verificare sulla pagina sopra
-
-[sources.dem10.attributes]
-band = 1
+pagina_brief = "http://geoportale.regione.emilia-romagna.it/it/download/prodottiraster"
 
 # ---------------------------------------------------------------------------
 [sources.suoli]
-title = "Carta dei suoli 1:50.000 (2018, 71% della regione) + 1:250.000 (tutta)"
-use = "tessitura, CaCO3 (se c'è), drenaggio"
-params = ["texture", "caco3"]
-status = "da verificare"
-status_note = "attributi esatti da verificare; CaCO3 da verificare se c'è come attributo/layer"
-license = "da verificare (attesa CC BY)"
-crs = "EPSG:5659"
+title = "Carta dei suoli 1:50.000 - Edizione 2021"
+use = "pH, CaCO3 e tessitura 0-30 cm dai profili rappresentativi (prepare suoli)"
+params = ["texture", "caco3", "ph"]
+status = "ok"
+status_note = "2026-10-20: zip open data con shapefile (13677 delineazioni, EPSG:7791) e Carta_Suoli50k.xlsx (fogli anagrafica, delin_suoli, delin_siti, suoli_classif). Copre il 78% della regione (93% basso Appennino, 37% medio Appennino). Nessun attributo diretto di tessitura/CaCO3/pH nei poligoni: si derivano con `prepare suoli`. CALTOT verificato in % (mediane coerenti con le classi 'non/scarsamente/moderatamente/molto calcareo'). WFS wfs/suoli: HTTP 400; WCS wcs/suoli: HTTP 401."
+license = "CC BY 4.0 (catalogo geoportale, voce 'Carta dei suoli ... 1:50.000 - Edizione 2021'), letta il 2026-10-20"
+crs = "EPSG:7791"
 local_path = ""
 
 [sources.suoli.endpoints]
+download = "https://mappegis.regione.emilia-romagna.it/moka/ckan/suolo/Carta_Suoli_50k.zip"
 wms = "https://servizigis.regione.emilia-romagna.it/wms/suoli"
 webgis = "https://geo.regione.emilia-romagna.it/cartpedo/"
-catalogo = "https://mappegis.regione.emilia-romagna.it/gstatico/documenti/dati_pedol/Catalogo_suoli_RER.pdf"  # stato ok nel brief
-wfs = ""            # non nel brief: da verificare se esiste
-download = ""       # non nel brief: da verificare
-
-[sources.suoli.service]
-wfs_typename = ""
-wfs_version = "2.0.0"
-wfs_output_format = ""   # vuoto = formato di default del server (GML)
+catalogo = "https://mappegis.regione.emilia-romagna.it/gstatico/documenti/dati_pedol/Catalogo_suoli_RER.pdf"
+download_250k = "https://mappegis.regione.emilia-romagna.it/moka/ckan/suolo/Carta_dei_suoli_250k_ed_1994.zip"  # non usato
+# Le carte raster regionali 0-30 cm (Tessitura_0_30_cm_rst, Calcare_totale_0_30_cm_rst) sono sul WMS ma non
+# risultano scaricabili dal geoportale; probabilmente su MinERva come il pH [da verificare].
 
 [sources.suoli.attributes]
-layer = ""          # layer nel file locale (vuoto va bene se ce n'è uno solo)
-texture_attr = ""   # attributo tessitura; i suoi valori vanno mappati in lookups/suoli_tessitura.csv
-caco3_attr = ""     # attributo NUMERICO CaCO3 in %, se esiste (se è a classi serve un'altra strada)
+layer = "suoli_0_30"        # layer scritto da `prepare suoli`
+ph_attr = "ph_0_30"
+caco3_attr = "caco3_0_30"   # % (CALTOT)
+texture_attr = "usda_0_30"  # classe USDA in inglese -> lookups/suoli_tessitura.csv
+
+[sources.suoli.prepare]
+# Nomi visti nel pacchetto Carta_Suoli_50k.zip scaricato il 2026-10-20.
+shp_join = "XID_DELINE"   # shapefile: id delineazione
+soils_sheet = "delin_suoli"
+soils_join = "XID_DELIN"
+soil_code = "SUOLO"
+soil_name = "NOME_SUOLO"
+soil_perc = "PERC"
+soil_site = "ID_SITO"
+sites_sheet = "delin_siti"
+site_id = "ID_SITO"
+top = "MIN"               # cm
+bottom = "MAX"            # cm
+sand = "SABBIA"           # %
+silt = "LIMO"             # %
+clay = "ARGILLA"          # %
+caco3 = "CALTOT"          # % (vedi status_note)
+ph = "PHH2O"
+depth_cm = 30
+raw_shp = ""              # vuoto = cerca l'unico .shp in data/raw/suoli/
+raw_xlsx = ""             # vuoto = cerca l'unico .xlsx in data/raw/suoli/
 
 # ---------------------------------------------------------------------------
 [sources.ph]
-title = "Carta del pH dei suoli 0-30 cm"
-use = "pH"
+title = "Carta del pH dei suoli, strato 0-30 cm (2a edizione, 2023)"
+use = "pH (preferito ai profili della carta dei suoli quando disponibile)"
 params = ["ph"]
 status = "da verificare"
-status_note = "download da verificare (le note descrivono la consultazione su MokaSuoli e geoportale)"
-license = "da verificare (attesa CC BY)"
-crs = "EPSG:5659"
-local_path = ""     # raster o vettore
+status_note = "2026-10-20: le note illustrative (2a ed. 2023) descrivono 2 raster a 100 m in EPSG:7791 (pH_0_30.tif e pH_0_30_ACC.tif) scaricabili da MinERva, gruppo SUOLI (https://datacatalog.regione.emilia-romagna.it/catalogCTA/group/suolo). Host bloccato dal proxy di questo ambiente: va scaricato a mano. Sul WMS suoli è il layer Valori_ph_0_30_cm_rst."
+license = "da verificare su MinERva (le note illustrative sono CC BY 4.0)"
+crs = "EPSG:7791"
+local_path = ""   # es. data/raw/ph/pH_0_30.tif dopo il download da MinERva
 
 [sources.ph.endpoints]
 note = "https://mappegis.regione.emilia-romagna.it/gstatico/documenti/dati_pedol/pH_0_30.pdf"
-download = ""       # da verificare
+catalogo_minerva = "https://datacatalog.regione.emilia-romagna.it/catalogCTA/group/suolo"
+wms = "https://servizigis.regione.emilia-romagna.it/wms/suoli"
 
 [sources.ph.attributes]
-layer = ""          # solo per dati vettoriali
-ph_attr = ""        # solo per dati vettoriali: attributo numerico del pH
-band = 1            # solo per raster
-value_scale = 1.0   # 1.0 = valori già in unità di pH; da verificare sul dato (es. 0.1 se in decimi)
+band = 1
+value_scale = 1.0   # le note parlano di "Valori di pH"; da confermare aprendo il file (check di range 2-11 nel build)
 
 # ---------------------------------------------------------------------------
 [sources.geologia]
-title = "Carta geologica 1:50.000"
+title = "Carta geologica 1:25.000/1:50.000 - Unità cartografabili geologiche (50k)"
 use = "roccia madre"
 params = ["bedrock"]
-status = "da verificare"
-status_note = "layer litologie da verificare; esiste anche la 1:10.000"
-license = "da verificare (attesa CC BY)"
+status = "ok"
+status_note = "2026-10-20: zip open data Unita_geologiche_50K.zip (63449 poligoni, UTMRER = parametri EPSG:5659, Last-Modified 2021-02-15) con SIGLA, NOME_COMPL, DESCRIZION (litologia, compilata nel 75% dei poligoni della Val Baganza). Anche WFS 2.0.0 wfs/geologia50k (GEOJSON, paginazione) in EPSG:7791. Lo zip 1:10.000 indicato dal catalogo (Unita_geologiche_10k.zip) risponde 404. Il layer WFS Formazioni_geol ha descrizioni per formazione ma il filtro BBOX non funziona."
+license = "CC BY 4.0 (catalogo geoportale, voce 'Carta geologica, 1:25.000 - Unità cartografabili geologiche - 50k'), letta il 2026-10-20"
 crs = "EPSG:5659"
 local_path = ""
 
 [sources.geologia.endpoints]
+download = "https://mappegis.regione.emilia-romagna.it/moka/ckan/geologia/Unita_geologiche_50K.zip"
+wfs = "https://servizigis.regione.emilia-romagna.it/wfs/geologia50k"
 wms = "https://servizigis.regione.emilia-romagna.it/wms/geologia50k"
 webgis = "https://servizimoka.regione.emilia-romagna.it/mokaApp/applicazioni/geo"
-wfs = ""            # non nel brief: da verificare se esiste
-download = ""       # non nel brief: da verificare
 
 [sources.geologia.service]
-wfs_typename = ""
+wfs_typename = "portale_geologia50k:Unita_geol_50k"
 wfs_version = "2.0.0"
-wfs_output_format = ""
+wfs_output_format = "GEOJSON"  # coordinate in lon/lat (RFC 7946) anche con SRSNAME=7791
 
 [sources.geologia.attributes]
-layer = ""
-unit_code_attr = "" # codice dell'unità geologica: chiave di lookups/geologia_vth.csv
-unit_name_attr = "" # facoltativo: nome/descrizione dell'unità, solo per i report
+layer = "Unita_geologiche_50K"  # shapefile dello zip (nel WFS gli stessi campi, con NOME_COMPLETO)
+unit_code_attr = "SIGLA"
+unit_name_attr = "NOME_COMPL"
 
 # ---------------------------------------------------------------------------
 [sources.forestale]
-title = "Carta forestale regionale 1:10.000"
-use = "maschera bosco, tipo di bosco, specie dominanti (ospiti)"
+title = "Carta forestale regionale 2025 (vigente) - Provincia di Parma"
+use = "maschera bosco, tipo forestale, specie prevalenti (ospiti)"
 params = ["forest_type", "hosts"]
-status = "da verificare"
-status_note = "download/WMS da verificare; pagina 'cartografia interattiva foreste' su ambiente.regione.emilia-romagna.it/it/parchi-natura2000/foreste/... (URL completo da ritrovare)"
-license = "da verificare (attesa CC BY)"
-crs = "EPSG:5659"
+status = "ok"
+status_note = "2026-10-20: shapefile per provincia sulla pagina 'La carta forestale regionale' (CartaForestale2025PR, 20268 poligoni, EPSG:7791) con NOMEUSO, COD_TIPO/NOMETIPO, COD_CAT/NOMECAT, PRIMA_SP/SPECIE1, SECONDA_SP/SPECIE2. WMS wms/aree_forestali; WFS wfs/aree_forestali: HTTP 401."
+license = "CC BY 4.0 secondo le Note legali del sito ambiente (https://ambiente.regione.emilia-romagna.it/it/note-legali: contenuti e materiali scaricabili, salvo diversa indicazione); la pagina del dato non indica una licenza propria. Letta il 2026-10-20"
+crs = "EPSG:7791"
 local_path = ""
 
 [sources.forestale.endpoints]
-wms = ""
-wfs = ""
-download = ""
-
-[sources.forestale.service]
-wfs_typename = ""
-wfs_version = "2.0.0"
-wfs_output_format = ""
+download = "https://ambiente.regione.emilia-romagna.it/it/parchi-natura2000/foreste/quadro-conoscitivo/sistema-informativo-regionale/carta-forestale-regionale/cartaforestalepr.zip/@@download/file"
+pagina = "https://ambiente.regione.emilia-romagna.it/it/parchi-natura2000/foreste/quadro-conoscitivo/sistema-informativo-regionale/carta-forestale-regionale"
+wms = "https://servizigis.regione.emilia-romagna.it/wms/aree_forestali"
 
 [sources.forestale.attributes]
-layer = ""
-forest_type_attr = ""      # tipo forestale ER: chiave di lookups/forestale_vth.csv
-forest_type_name_attr = "" # facoltativo: descrizione del tipo, solo per i report
-mask_where = ""            # facoltativo: filtro SQL se il layer contiene anche poligoni non boscati
+layer = "CartaForestale2025PR"
+forest_type_attr = "COD_TIPO"
+forest_type_name_attr = "NOMETIPO"
+hosts_attrs = ["PRIMA_SP", "SECONDA_SP"]    # codici specie -> lookups/forestale_specie.csv
+hosts_name_attrs = ["SPECIE1", "SPECIE2"]
+mask_where = "NOMEUSO = 'Bosco'"            # DECISIONE DA CONFERMARE (FASE0.md): esclude arbusteti in evoluzione, impianti, colture
 
 # ---------------------------------------------------------------------------
 [sources.vegetazione]
-title = "Carta della vegetazione"
-use = "supporto per gli ospiti (non ancora usata nello score)"
+title = "Carta della vegetazione (carte di singoli parchi/aree)"
+use = "supporto per gli ospiti (non usata nello score)"
 params = []
-status = "da verificare"
-status_note = "copertura probabilmente parziale"
-license = "da verificare (attesa CC BY)"
-crs = "EPSG:5659"
+status = "ok"
+status_note = "2026-10-20: copertura parziale confermata: carte di singole aree; nel parmense Alta Val Parma e Cedra (2002), Boschi di Carrega (1999), Parco del Taro (1999), Parco dello Stirone (2002). WMS e WFS rispondono su https (l'URL http del brief qui non si risolve)."
+license = "CC BY 4.0 (catalogo geoportale, voci 'Carta della vegetazione ...')"
+crs = "EPSG:7791"
 local_path = ""
 
 [sources.vegetazione.endpoints]
-wms = "http://servizigis.regione.emilia-romagna.it/wms/carta_della_vegetazione"
-# Il brief dice "WMS/WFS" su questo URL: da verificare se risponde anche a SERVICE=WFS.
-wfs = "http://servizigis.regione.emilia-romagna.it/wms/carta_della_vegetazione"
+wms = "https://servizigis.regione.emilia-romagna.it/wms/carta_della_vegetazione"
+wfs = "https://servizigis.regione.emilia-romagna.it/wfs/carta_della_vegetazione"
 
 [sources.vegetazione.service]
 wfs_typename = ""
@@ -191,9 +209,9 @@ title = "ERG5 Arpae (griglia 5 km)"
 use = "continentalità, stress idrico (feature candidate, non nello score)"
 params = []
 status = "da verificare"
-status_note = "portale dati Arpae: URL da trovare"
+status_note = "2026-10-20: portale dati Arpae non tra gli host raggiungibili da questo ambiente; non serve allo score VTH."
 license = "da verificare"
-crs = ""            # da verificare
+crs = ""
 local_path = ""
 
 [sources.erg5.endpoints]
@@ -205,9 +223,9 @@ title = "CAPP Tuber magnatum (carta regionale del bianco)"
 use = "layer informativo separato nell'app"
 params = []
 status = "non trovato"
-status_note = "download/WMS non trovato: chiedere alla Regione; webgis a risoluzione ridotta"
+status_note = "2026-10-20: nessun download/WMS nel catalogo del geoportale; il webgis (host agri.regione.emilia-romagna.it) è rifiutato dal proxy di questo ambiente. Chiedere alla Regione."
 license = "da verificare"
-crs = "EPSG:5659"
+crs = ""
 local_path = ""
 
 [sources.capp.endpoints]
@@ -216,16 +234,39 @@ note = "https://agricoltura.regione.emilia-romagna.it/tartufi/pubblicazioni/note
 
 # ---------------------------------------------------------------------------
 [sources.aree_protette]
-title = "Confini parchi e Natura 2000"
-use = "regole di raccolta (L.R. 24/1991 art. 15 e 21): avviso nell'app, non nello score"
+title = "Parchi e Riserve, Rete Natura 2000 (SIC/ZSC/ZPS)"
+use = "regole di raccolta (L.R. 24/1991 art. 21): avviso nell'app, non nello score"
 params = []
-status = "da verificare"
-status_note = "layer dal geoportale da trovare"
-license = "da verificare"
-crs = "EPSG:5659"
+status = "ok"
+status_note = "2026-10-20: WFS 2.0.0 wfs/areeprotette_natura2000 (EPSG:25832, GEOJSON, paginazione) con Parchi_Riserve_limiti, Parchi_Riserve_zone, SIC_ZPS_regionali, Paesaggi_protetti, Aree_riequilibrio_ecologico. Shapefile anche su ambiente .../consultazione/dati (Natura 2000 aggiornamento 8 luglio 2024)."
+license = "CC BY 4.0 (catalogo geoportale, voci 'Aree Protette - Parchi e Riserve' e 'Rete Natura 2000 - SIC e ZPS regionali'), letta il 2026-10-20"
+crs = "EPSG:25832"
 local_path = ""
 
 [sources.aree_protette.endpoints]
-wms = ""
-wfs = ""
-download = ""
+wfs = "https://servizigis.regione.emilia-romagna.it/wfs/areeprotette_natura2000"
+wms = "https://servizigis.regione.emilia-romagna.it/wms/areeprotette_natura2000"
+download_parchi = "https://ambiente.regione.emilia-romagna.it/it/parchi-natura2000/consultazione/dati/download/shape_parchi_riserve.zip/@@download/file"
+download_natura2000 = "https://ambiente.regione.emilia-romagna.it/it/parchi-natura2000/consultazione/dati/download/sic2024_shp.zip/@@download/file"
+pagina = "https://ambiente.regione.emilia-romagna.it/it/parchi-natura2000/consultazione/dati"
+
+[sources.aree_protette.service]
+wfs_typename = "portale_areeprotette_natura2000:Parchi_Riserve_zone"  # anche ...:SIC_ZPS_regionali
+wfs_version = "2.0.0"
+wfs_output_format = "GEOJSON"
+
+# ---------------------------------------------------------------------------
+[sources.aree_tutela_fauna]
+title = "Istituti faunistici: oasi di protezione, zone di rifugio, ZRC, aziende faunistico/agri-turistico-venatorie"
+use = "L.R. 24/1991 art. 15 c.4 lett. b: raccolta vietata dal 1/2 al 30/6 in collina (1/4-30/6 in pianura); avviso nell'app, non nello score"
+params = []
+status = "da verificare"
+status_note = "2026-10-20: lo strato esiste (notizia Regione del 20/11/2024): webGIS del Piano faunistico venatorio con esportazione shapefile (EPSG:25832). Host agri.regione.emilia-romagna.it rifiutato dal proxy di questo ambiente: va esportato a mano. Non è nel catalogo del geoportale."
+license = "da verificare"
+crs = "EPSG:25832"
+local_path = ""
+
+[sources.aree_tutela_fauna.endpoints]
+webgis = "https://agri.regione.emilia-romagna.it/MotoreGis/PianoFaunisticoVenatorio/gis.html"
+notizia = "https://agricoltura.regione.emilia-romagna.it/fauna-e-caccia/notizie/2024/disponibile-su-piattaforma-webgis-la-cartografia-degli-istituti-faunistici-pubblici-e-privati"
+pagina = "https://agricoltura.regione.emilia-romagna.it/fauna-e-caccia/fauna/pianificazione/istituti-faunistici"

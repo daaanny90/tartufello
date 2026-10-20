@@ -15,7 +15,7 @@ Il documento di riferimento è il brief, importato qui sotto. Leggilo prima di q
 - **Il modello è uno solo.** Soglie, classi, ospiti e contratto dei tile stanno in `model/vth-v1.json`, letto da pipeline e app. Non duplicare soglie nel codice; se cambia una soglia, nuova versione del modello.
 - **Niente precisione finta.** Output dello score a 20-25 m; il DTM a 5 m serve solo per derivare quota e morfologia.
 - **VTH è un prior, non la verità.** Le incoerenze note del paper (C/N, CaCO3, numero di siti "alta") sono documentate nel brief: non "correggerle" in silenzio nel codice.
-- CRS: dati regionali in EPSG:5659, mappa in EPSG:3857.
+- CRS: griglia di lavoro EPSG:5659; i dati regionali arrivano anche in EPSG:7791 o 25832 e si riproiettano. Mappa in EPSG:3857.
 
 ## Struttura e comandi
 
@@ -29,8 +29,8 @@ Prima di un push: i test della parte toccata devono passare; se tocchi `model/`,
 
 ## Stato
 
-- App (Fase 1 lato app e Fase 2): fatta e testata, in attesa di dati veri.
-- Pipeline: fatta e testata su dati sintetici. Tutti i dataset regionali sono ancora **[da verificare]**: la Fase 0 non è iniziata.
-- Il proxy dell'ambiente cloud blocca `*.regione.emilia-romagna.it`: la Fase 0 si fa da un computer normale o dopo aver allargato la rete dell'ambiente.
+- App (Fase 1 lato app e Fase 2): fatta e testata. Calendario verificato sulla delibera, regole della L.R. 24/1991 come dati.
+- Pipeline: Fase 0 fatta (esiti in `BRIEF.md` §12 e `pipeline/FASE0.md`). Primo build reale sulla Val Baganza; le tabelle di lookup sono **BOZZE** e lo score per ora distingue poco (tipo di bosco e roccia madre quasi non classificati).
+- Host ancora bloccati dal proxy dell'ambiente cloud: `agri.regione.emilia-romagna.it` (istituti faunistici, CAPP) e `datacatalog.regione.emilia-romagna.it` (raster del pH). Vanno aggiunti agli Allowed domains o scaricati a mano.
 
 Documenti in italiano; identificatori nel codice in inglese, come nel modello dati del brief.

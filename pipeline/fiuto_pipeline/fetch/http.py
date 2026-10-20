@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import shutil
+import time
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -22,18 +23,41 @@ def session() -> requests.Session:
     return s
 
 
+RETRIES = 4  # tentativi in più dopo il primo
+BACKOFF = 3.0  # secondi, raddoppia a ogni tentativo
+RETRY_STATUS = {429, 500, 502, 503, 504}
+
+
+def _sleep(seconds: float) -> None:  # separato per poterlo neutralizzare nei test
+    time.sleep(seconds)
+
+
 def get(sess: requests.Session, url: str, *, params=None, stream: bool = False) -> requests.Response:
-    try:
-        r = sess.get(url, params=params, timeout=TIMEOUT, stream=stream)
-    except requests.RequestException as exc:
-        raise FiutoError(
-            f"richiesta fallita verso {url}: {exc}\n"
-            f"Controlla connessione/proxy; se l'host risponde dal browser, riprova."
-        ) from exc
-    if r.status_code >= 400:
-        body = "" if stream else r.text[:300]
-        raise FiutoError(f"HTTP {r.status_code} da {r.url}\n{body}")
-    return r
+    """GET con ritentativi: i server regionali a volte chiudono la connessione o rispondono 5xx."""
+    last: Exception | None = None
+    for attempt in range(RETRIES + 1):
+        if attempt:
+            _sleep(BACKOFF * 2 ** (attempt - 1))
+        try:
+            r = sess.get(url, params=params, timeout=TIMEOUT, stream=stream)
+        except (requests.ConnectionError, requests.Timeout) as exc:
+            last = exc
+            continue
+        except requests.RequestException as exc:
+            last = exc
+            break
+        if r.status_code in RETRY_STATUS and attempt < RETRIES:
+            last = FiutoError(f"HTTP {r.status_code} da {r.url}")
+            r.close()
+            continue
+        if r.status_code >= 400:
+            body = "" if stream else r.text[:300]
+            raise FiutoError(f"HTTP {r.status_code} da {r.url}\n{body}")
+        return r
+    raise FiutoError(
+        f"richiesta fallita verso {url} dopo {RETRIES + 1} tentativi: {last}\n"
+        f"Controlla connessione/proxy; se l'host risponde dal browser, riprova."
+    ) from last
 
 
 def filename_from(resp: requests.Response, fallback: str) -> str:

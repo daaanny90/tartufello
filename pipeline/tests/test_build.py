@@ -126,6 +126,7 @@ def _run(project, **kw):
         build_path=project / "build.toml",
         lookup_dir=project / "lookups",
         out_dir=project / "out",
+        raw_dir=project / "raw",
         log=logs.append,
         **kw,
     )
@@ -213,6 +214,8 @@ def test_cli_build_and_errors(project, capsys):
         str(project / "build.toml"),
         "--lookups",
         str(project / "lookups"),
+        "--raw-dir",
+        str(project / "raw"),
     ]
     assert main(base + ["build", "--aoi", "nessuna"]) == 1
     assert "non trovata" in capsys.readouterr().err
@@ -224,15 +227,25 @@ def test_cli_build_and_errors(project, capsys):
 
 
 def test_cli_info_on_repo_config(capsys):
-    # la configurazione del repo: tutto ancora da verificare, nessun parametro pronto
+    # la configurazione del repo: info legge solo file locali (niente rete), qualunque sia la cache
     assert main(["info"]) == 0
     out = capsys.readouterr().out
-    assert "Parametri pronti per il build: nessuno" in out
-    assert "[da verificare]" in out and "APPROSSIMATIVA" in out
+    assert "Parametri pronti per il build:" in out and "Tabelle di lookup" in out
+    assert "APPROSSIMATIVA" in out
 
 
-def test_cli_fetch_refuses_with_exit_2(capsys):
-    assert main(["fetch", "geologia"]) == 2
+def test_cli_fetch_refuses_with_exit_2(tmp_path, capsys):
+    # configurazione temporanea: i test non devono mai scaricare davvero
+    write_text(
+        tmp_path / "sources.toml",
+        """
+        [sources.geologia]
+        status = "da verificare"
+        [sources.geologia.endpoints]
+        wms = "https://example.invalid/wms"
+        """,
+    )
+    assert main(["--sources", str(tmp_path / "sources.toml"), "fetch", "geologia"]) == 2
     assert "capabilities geologia" in capsys.readouterr().err
 
 
@@ -262,3 +275,52 @@ def test_empty_lookups_list_values_to_classify(project):
     assert rows[0]["unit_name"] == "Calcare sint" and rows[0]["in_tabella"] == "no"
     assert (project / "out" / "da_classificare_forest_type.csv").exists()
     assert (project / "out" / "da_classificare_texture.csv").exists()
+
+
+def test_draft_lookups_put_warning_in_metadata(project):
+    lk = project / "lookups" / "geologia_vth.csv"
+    lk.write_text(
+        lk.read_text().replace("calcari,,test sintetico", "calcari,BOZZA da rivedere,test sintetico")
+    )
+    rep, _ = _run(project)
+    assert rep["lookup_bozza"] == {"geologia_vth": 1}
+    assert rep["params"]["bedrock"]["lookup_bozza"] == 1
+    from pmtiles.reader import MmapSource, Reader
+
+    with open(rep["outputs"]["export"]["tiles"]["path"], "rb") as f:
+        meta = Reader(MmapSource(f)).metadata()
+    assert "BOZZA" in meta["warning"] and "geologia_vth (1 righe)" in meta["warning"]
+
+
+def test_no_warning_without_drafts(project):
+    rep, _ = _run(project)
+    from pmtiles.reader import MmapSource, Reader
+
+    with open(rep["outputs"]["export"]["tiles"]["path"], "rb") as f:
+        meta = Reader(MmapSource(f)).metadata()
+    assert "warning" not in meta and rep["lookup_bozza"] == {}
+
+
+def test_metadata_has_attribution(project):
+    rep, _ = _run(project)
+    from pmtiles.reader import MmapSource, Reader
+
+    with open(rep["outputs"]["export"]["tiles"]["path"], "rb") as f:
+        meta = Reader(MmapSource(f)).metadata()
+    assert meta["attribution"].startswith("Dati © Regione Emilia-Romagna, ")
+    assert "Elaborazione fiuto" in meta["attribution"]
+
+
+def test_attribution_marks_unverified_licences():
+    from fiuto_pipeline.build import attribution
+    from fiuto_pipeline.config import Source
+
+    text = attribution(
+        [
+            Source(id="a", title="DTM 5x5 - ultima edizione (ed. 2025)", license="CC BY 4.0 (catalogo)"),
+            Source(id="b", title="Carta dei suoli 1:50.000 - Edizione 2021", license="CC BY 4.0"),
+            Source(id="c", title="pH", license="da verificare"),
+        ]
+    )
+    assert "CC BY 4.0: DTM 5x5, Carta dei suoli 1:50.000" in text
+    assert "licenza da verificare: pH" in text

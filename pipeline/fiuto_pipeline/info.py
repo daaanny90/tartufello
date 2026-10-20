@@ -14,7 +14,7 @@ DERIVE_NEEDS = {
     "dtm": {"elevation": []},
     "dem10": {"elevation": []},
     "ph": {"ph": []},  # ph_attr serve solo se il dato è vettoriale
-    "suoli": {"texture": ["texture_attr"], "caco3": ["caco3_attr"]},
+    "suoli": {"texture": ["texture_attr"], "caco3": ["caco3_attr"], "ph": ["ph_attr"]},
     "geologia": {"bedrock": ["unit_code_attr"]},
     "forestale": {"maschera bosco": [], "forest_type": ["forest_type_attr"], "hosts": ["forest_type_attr"]},
 }
@@ -24,11 +24,12 @@ LOOKUP_NEEDS = {
     "bedrock": ("geologia_vth", "vth_class"),
     "forest_type": ("forestale_vth", "forest_class"),
     "hosts": ("forestale_vth", "hosts"),
+    "hosts_specie": ("forestale_specie", "host"),
 }
 FETCH_NEEDS = {
     "url": ("endpoints", ["download"]),
     "wfs": ("endpoints", ["wfs"], "service", ["wfs_typename"]),
-    "wcs": ("endpoints", ["wcs"], "service", ["wcs_coverage_id", "wcs_axis_x", "wcs_axis_y", "wcs_format"]),
+    "wcs": ("endpoints", ["wcs"], "service", ["wcs_version", "wcs_coverage_id", "wcs_format"]),
 }
 
 
@@ -56,7 +57,9 @@ def _data_state(src: Source) -> str:
         return f"ERRORE: {exc}"
 
 
-def run_info(sources_path=None, aoi_path=None, build_path=None, lookup_dir=None, out=None) -> int:
+def run_info(
+    sources_path=None, aoi_path=None, build_path=None, lookup_dir=None, out=None, raw_dir=None
+) -> int:
     out = out or sys.stdout
     todo = 0
     try:
@@ -71,7 +74,7 @@ def run_info(sources_path=None, aoi_path=None, build_path=None, lookup_dir=None,
         print(f"Modello/build.toml: ERRORE {exc}", file=out)
         return 1
 
-    sources = load_sources(sources_path)
+    sources = load_sources(sources_path, raw_dir=raw_dir)
     print("\nSorgenti (sources.toml):", file=out)
     for sid, src in sources.items():
         flag = "ok" if src.status == STATUS_OK else src.status
@@ -132,8 +135,9 @@ def run_info(sources_path=None, aoi_path=None, build_path=None, lookup_dir=None,
             needs = DERIVE_NEEDS.get(sid, {}).get(pid, [])
             if src.missing("attributes", *needs):
                 continue
-            if pid in LOOKUP_NEEDS:
-                t, c = LOOKUP_NEEDS[pid]
+            key = "hosts_specie" if pid == "hosts" and src.attr("hosts_attrs") else pid
+            if key in LOOKUP_NEEDS:
+                t, c = LOOKUP_NEEDS[key]
                 try:
                     if load_lookup(t, lookup_dir).mapped_count(c) == 0:
                         listing.append(pid)

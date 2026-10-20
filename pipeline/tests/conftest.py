@@ -59,7 +59,10 @@ def write_vector(
 
     path.parent.mkdir(parents=True, exist_ok=True)
     gdf = gpd.GeoDataFrame(records, geometry=geoms, crs=crs)
-    gdf.to_file(path, driver="GPKG", layer=layer or path.stem)
+    if path.suffix.lower() == ".shp":
+        gdf.to_file(path, driver="ESRI Shapefile")
+    else:
+        gdf.to_file(path, driver="GPKG", layer=layer or path.stem)
     return path
 
 

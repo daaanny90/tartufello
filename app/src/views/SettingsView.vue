@@ -133,6 +133,9 @@ function doImport() {
           Il file è stato generato con il modello {{ meta('score', 'model') }}, l'app usa {{ model.id }}.
         </p>
         <p v-if="mapFiles.score.meta?.synthetic" class="banner bad small">Dati SINTETICI di test: non usarla per cercare.</p>
+        <p v-if="meta('score', 'warning')" class="banner warn small">{{ meta('score', 'warning') }}</p>
+        <p v-if="meta('score', 'aoi_note')" class="small muted">{{ meta('score', 'aoi_note') }}</p>
+        <p v-if="meta('score', 'attribution')" class="small muted">{{ meta('score', 'attribution') }}</p>
         <button class="danger" @click="removeMapFile('score')">Rimuovi</button>
       </template>
       <p v-else class="small muted">Nessuna. Il file `.pmtiles` lo genera la pipeline (cartella pipeline/ del repo).</p>

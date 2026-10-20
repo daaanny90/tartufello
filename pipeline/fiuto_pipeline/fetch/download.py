@@ -208,6 +208,20 @@ def _ext_for(fmt: str) -> str:
     raise ConfigError(f"formato WCS '{fmt}' non gestito: scegli un GeoTIFF dall'elenco di capabilities")
 
 
+def _check_values_raster(path: Path, sid: str) -> None:
+    """Un WCS può servire un'immagine colorata (RGB/RGBA) invece dei valori: in quel caso ci si ferma."""
+    import rasterio
+
+    with rasterio.open(path) as ds:
+        count, dtype = ds.count, ds.dtypes[0]
+    if count > 1:
+        path.unlink()
+        raise FiutoError(
+            f"[{sid}] il WCS ha restituito {count} bande {dtype}: è un'immagine (es. RGBA), non un dato "
+            f"di valori. Cerca un'altra coverage o il download del dato."
+        )
+
+
 def fetch_wcs(
     src: Source,
     bbox: tuple[float, float, float, float],
@@ -217,11 +231,20 @@ def fetch_wcs(
     align: float | None = None,
     log=print,
 ) -> Path:
-    """GetCoverage 2.0.1 a riquadri; ritorna la cartella dei tile (il build li legge tutti)."""
+    """GetCoverage a riquadri (WCS 2.0.1 o 1.0.0); ritorna la cartella dei tile (il build li legge tutti)."""
     base = src.endpoint("wcs")
     if not base:
         raise NotConfigured(f"[{src.id}] endpoints.wcs vuoto [da verificare]")
-    src.require("service", "wcs_coverage_id", "wcs_axis_x", "wcs_axis_y", "wcs_format", what="lo scarico WCS")
+    src.require("service", "wcs_version", "wcs_coverage_id", "wcs_format", what="lo scarico WCS")
+    version = str(src.svc("wcs_version"))
+    if version == "2.0.1":
+        src.require("service", "wcs_axis_x", "wcs_axis_y", what="lo scarico WCS 2.0.1")
+    elif version == "1.0.0":
+        src.require("service", "wcs_res", what="lo scarico WCS 1.0.0")
+        if not src.crs:
+            raise ConfigError(f"[{src.id}] manca crs (CRS nativo della coverage) in sources.toml")
+    else:
+        raise ConfigError(f"[{src.id}] service.wcs_version '{version}' non gestito (ammessi: 2.0.1, 1.0.0)")
     cid = src.svc("wcs_coverage_id")
     ext = _ext_for(src.svc("wcs_format"))
     size = float(tile_size or src.svc("wcs_tile_size_m", 5000))
@@ -233,13 +256,18 @@ def fetch_wcs(
         dest = tdir / ("tile_" + "_".join(f"{v:.0f}" for v in tb) + ext)
         if dest.exists() and dest.stat().st_size > 0 and not force:
             continue
-        params = ows.wcs_getcoverage_params(
-            cid,
-            axis_x=src.svc("wcs_axis_x"),
-            axis_y=src.svc("wcs_axis_y"),
-            bbox=tb,
-            fmt=src.svc("wcs_format"),
-        )
+        if version == "2.0.1":
+            params = ows.wcs_getcoverage_params(
+                cid,
+                axis_x=src.svc("wcs_axis_x"),
+                axis_y=src.svc("wcs_axis_y"),
+                bbox=tb,
+                fmt=src.svc("wcs_format"),
+            )
+        else:
+            params = ows.wcs100_getcoverage_params(
+                cid, crs=src.crs, bbox=tb, res=float(src.svc("wcs_res")), fmt=src.svc("wcs_format")
+            )
         log(f"[{i}/{len(tiles)}] GetCoverage {ows.build_url(base, params)}")
         resp = get(sess, base, params=params, stream=True)
         save_stream(resp, dest)
@@ -251,6 +279,7 @@ def fetch_wcs(
             except ValueError:
                 msg = body[:300].decode("utf-8", "replace")
             raise FiutoError(f"[{src.id}] WCS ha risposto con XML invece del raster: {msg}")
+        _check_values_raster(dest, src.id)
     log(f"{len(tiles)} riquadri in {tdir}")
     write_manifest(src, tdir, method="wcs", coverage=cid, bbox=list(bbox), crs=src.crs, tiles=len(tiles))
     return tdir

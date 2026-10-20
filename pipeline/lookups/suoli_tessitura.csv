@@ -1,4 +1,14 @@
 valore_er,texture_id,note,fonte
-# DA RIEMPIRE con i valori REALI dell'attributo tessitura della carta dei suoli ER (attributes.texture_attr in sources.toml). Nessun codice ER è stato inventato.
-# valore_er = valore esatto dell'attributo (maiuscole comprese). texture_id = una categoria di model/vth-v1.json param "texture": franco_argillosa franca franco_sabbioso_argillosa argillo_limosa franco_argillo_limosa argillosa franco_sabbiosa sabbio_argillosa franco_limosa sabbiosa sabbioso_franca limosa.
-# texture_id vuoto = non classificato (255). Il build scrive in data/build/<aoi>/da_classificare_texture.csv i valori trovati e non mappati, con la superficie.
+# Valori prodotti da `python -m fiuto_pipeline prepare suoli` (attributo usda_0_30): classe USDA in inglese -> categoria del modello con lo stesso campo usda. Corrispondenza 1:1, ma la classe dipende dal metodo dei profili (FASE0.md).
+clay loam,franco_argillosa,BOZZA da rivedere,"model/vth-v1.json texture.usda='clay loam' (Franco-argillosa); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+loam,franca,BOZZA da rivedere,"model/vth-v1.json texture.usda='loam' (Franca); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+sandy clay loam,franco_sabbioso_argillosa,BOZZA da rivedere,"model/vth-v1.json texture.usda='sandy clay loam' (Franco-sabbioso-argillosa); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+silty clay,argillo_limosa,BOZZA da rivedere,"model/vth-v1.json texture.usda='silty clay' (Argillo-limosa); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+silty clay loam,franco_argillo_limosa,BOZZA da rivedere,"model/vth-v1.json texture.usda='silty clay loam' (Franco-argillo-limosa); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+clay,argillosa,BOZZA da rivedere,"model/vth-v1.json texture.usda='clay' (Argillosa); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+sandy loam,franco_sabbiosa,BOZZA da rivedere,"model/vth-v1.json texture.usda='sandy loam' (Franco-sabbiosa); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+sandy clay,sabbio_argillosa,BOZZA da rivedere,"model/vth-v1.json texture.usda='sandy clay' (Sabbio-argillosa); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+silt loam,franco_limosa,BOZZA da rivedere,"model/vth-v1.json texture.usda='silt loam' (Franco-limosa); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+sand,sabbiosa,BOZZA da rivedere,"model/vth-v1.json texture.usda='sand' (Sabbiosa); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+loamy sand,sabbioso_franca,BOZZA da rivedere,"model/vth-v1.json texture.usda='loamy sand' (Sabbioso-franca); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"
+silt,limosa,BOZZA da rivedere,"model/vth-v1.json texture.usda='silt' (Limosa); valore da `prepare suoli` (triangolo USDA su SABBIA/LIMO/ARGILLA 0-30 cm, Carta_Suoli50k.xlsx foglio delin_siti)"

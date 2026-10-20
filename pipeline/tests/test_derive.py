@@ -158,8 +158,31 @@ def test_no_local_data_is_not_configured(grid, model, tmp_path):
 
 def test_text_numeric_attribute_is_refused(tmp_path, grid, model):
     gpkg = write_vector(
-        tmp_path / "ph_testo.gpkg", [{"ph_sint": "7,2"}, {"ph_sint": "6.8"}],
+        tmp_path / "ph_testo.gpkg",
+        [{"ph_sint": "7,2"}, {"ph_sint": "6.8"}],
         [box(X0, Y0, X0 + 1000, Y0 + H_M), box(X0 + 1000, Y0, X0 + W_M, Y0 + H_M)],
     )
     with pytest.raises(ConfigError, match="virgola decimale"):
         derive_ph(_src("ph", gpkg, ph_attr="ph_sint"), grid, model)
+
+
+def test_nodata_override_when_file_has_none(tmp_path, grid, model):
+    # tile come quelli del WCS: nessun nodata dichiarato, -9999 dove non c'è dato
+    z = np.full((40, 80), 500.0, dtype="float32")
+    z[:, 40:] = -9999.0
+    tif = write_raster(tmp_path / "dtm.tif", z, x0=X0, y1=Y0 + H_M, res=25.0, crs="EPSG:5659", nodata=None)
+    with pytest.raises(ConfigError, match="nodata"):
+        derive_elevation(_src("dtm", tif), grid, model)
+    a = derive_elevation(_src("dtm", tif, nodata=-9999), grid, model).array
+    assert (a[:, :40] == 3).all() and (a[:, 40:] == NA).all()
+
+
+def test_forest_mask_where_on_shapefile(tmp_path, grid):
+    # con lo Shapefile il filtro deve funzionare anche se il campo non è tra quelli letti
+    shp = write_vector(
+        tmp_path / "bosco_sint.shp",
+        [{"uso_sint": "Bosco"}, {"uso_sint": "Arbusteto"}],
+        [box(X0, Y0, X0 + 500, Y0 + 500), box(X0 + 1000, Y0, X0 + 1500, Y0 + 500)],
+    )
+    m, _ = derive_forest_mask(_src("forestale", shp, mask_where="uso_sint = 'Bosco'"), grid)
+    assert m.sum() == 20 * 20

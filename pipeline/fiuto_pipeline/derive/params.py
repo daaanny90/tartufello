@@ -20,15 +20,17 @@ from ..config import Source
 from ..errors import ConfigError
 from ..geoio import (
     check_range,
+    codes_from_index,
     is_raster,
     rasterize_codes,
+    rasterize_index,
     rasterize_mask,
     rasterize_values,
     read_vector,
     resample_to_grid,
 )
 from ..grid import Grid
-from ..lookups import Lookup, category_map, int_map, load_lookup
+from ..lookups import Lookup, category_map, draft_count, int_map, load_lookup
 from ..model import NA, Model
 
 # Intervalli fisicamente plausibili: servono solo a scovare nodata/scale sbagliati.
@@ -46,6 +48,8 @@ class ParamResult:
     source: str
     detail: str = ""
     unmapped: list[dict] = field(default_factory=list)
+    lookup: str = ""  # tabella di lookup usata (per il CSV dei valori da classificare)
+    drafts: int = 0  # righe della tabella segnate BOZZA
 
 
 # --- mappature pure (testabili senza file) ----------------------------------
@@ -143,6 +147,10 @@ def _names(gdf, code_attr: str, name_attr: str | None) -> dict[str, str]:
     return out
 
 
+def _float_or_none(v) -> float | None:
+    return None if v is None or v == "" else float(v)
+
+
 # --- parametri numerici -------------------------------------------------------
 
 
@@ -152,7 +160,12 @@ def derive_elevation(src: Source, grid: Grid, model: Model) -> ParamResult:
     if not is_raster(path):
         raise ConfigError(f"[{src.id}] {path} non è un raster: per la quota serve un DTM")
     z = resample_to_grid(
-        path, grid, resampling=Resampling.average, band=int(src.attr("band", 1)), default_crs=src.crs
+        path,
+        grid,
+        resampling=Resampling.average,
+        band=int(src.attr("band", 1)),
+        default_crs=src.crs,
+        nodata=_float_or_none(src.attr("nodata")),
     )
     z = check_range(z, *PLAUSIBLE["elevation"], what=f"[{src.id}] quota")
     return ParamResult("elevation", model.classify("elevation", z), src.id, f"{path}")
@@ -170,6 +183,7 @@ def _numeric_from(src: Source, grid: Grid, attr_key: str, what: str) -> tuple[np
             band=int(src.attr("band", 1)),
             default_crs=src.crs,
             scale=scale,
+            nodata=_float_or_none(src.attr("nodata")),
         )
         return vals, f"{path} (raster)"
     src.require("attributes", attr_key, what=what)
@@ -225,7 +239,7 @@ def derive_texture(
         codes, labels, mapping, cats, cell_ha=grid.cell_area_ha, mask=mask, lookup=lookup
     )
     detail = f"{path} attributo {attr}" + _empty_note(lookup, "texture_id")
-    return ParamResult("texture", pts, src.id, detail, unmapped)
+    return ParamResult("texture", pts, src.id, detail, unmapped, lookup.name, draft_count(lookup))
 
 
 def derive_bedrock(
@@ -253,7 +267,7 @@ def derive_bedrock(
         names=_names(gdf, code_attr, name_attr),
     )
     detail = f"{path} attributo {code_attr}" + _empty_note(lookup, "vth_class")
-    return ParamResult("bedrock", pts, src.id, detail, unmapped)
+    return ParamResult("bedrock", pts, src.id, detail, unmapped, lookup.name, draft_count(lookup))
 
 
 def _read_forest(src: Source, grid: Grid, columns: list[str]):
@@ -278,31 +292,123 @@ def derive_forest_mask(src: Source, grid: Grid) -> tuple[np.ndarray, str]:
     return rasterize_mask(gdf, grid), detail
 
 
+def combine_hosts(values: list[np.ndarray], present: list[np.ndarray]) -> np.ndarray:
+    """Ospiti da più specie (es. prima e seconda specie prevalente).
+
+    1 se almeno una specie è ospite; 0 se tutte le specie presenti sono
+    classificate non ospiti; 255 se manca il dato o una specie presente non
+    è ancora in tabella (prudenza: non si dà 0 su un'incognita).
+    """
+    any_host = np.zeros(values[0].shape, dtype=bool)
+    unknown = np.zeros(values[0].shape, dtype=bool)
+    any_present = np.zeros(values[0].shape, dtype=bool)
+    for v, pr in zip(values, present):
+        any_host |= v == 1
+        unknown |= pr & (v == NA)
+        any_present |= pr
+    out = np.full(values[0].shape, NA, dtype="uint8")
+    out[any_present & ~unknown] = 0
+    out[any_host] = 1
+    return out
+
+
+def _as_list(v) -> list[str]:
+    if v is None:
+        return []
+    return [str(x) for x in v] if isinstance(v, (list, tuple)) else [str(v)]
+
+
+def _merge_unmapped(lists: list[list[dict]], mask: np.ndarray | None) -> list[dict]:
+    """Unisce i valori non classificati di più attributi sommando le superfici."""
+    merged: dict[str, dict] = {}
+    for rows in lists:
+        for r in rows:
+            m = merged.setdefault(
+                r["value"], {**r, "ha": 0.0, **({"ha_bosco": 0.0} if mask is not None else {})}
+            )
+            m["ha"] = round(m["ha"] + r["ha"], 4)
+            if mask is not None:
+                m["ha_bosco"] = round(m["ha_bosco"] + r.get("ha_bosco", 0.0), 4)
+            m["name"] = m.get("name") or r.get("name", "")
+    key = "ha_bosco" if mask is not None else "ha"
+    return sorted(merged.values(), key=lambda r: (-r[key], -r["ha"], r["value"]))
+
+
 def derive_forest(
     src: Source, grid: Grid, model: Model, *, mask: np.ndarray | None = None, lookup_dir: Path | None = None
 ) -> dict[str, ParamResult]:
-    """Tipo di bosco e ospiti dalla carta forestale via lookups/forestale_vth.csv.
+    """Tipo di bosco e ospiti dalla carta forestale.
 
-    Ritorna {"forest_type": ..., "hosts": ...}. Con la tabella ancora vuota i
-    due parametri restano a 255 ma i tipi trovati finiscono nel report.
+    Tipo: attributes.forest_type_attr -> lookups/forestale_vth.csv (forest_class).
+    Ospiti: se attributes.hosts_attrs elenca attributi di specie (es. prima e
+    seconda specie prevalente) -> lookups/forestale_specie.csv (host 0/1),
+    altrimenti la colonna hosts di forestale_vth.csv per tipo.
+    Con le tabelle ancora vuote i parametri restano a 255 ma i valori trovati
+    finiscono nel report.
     """
     src.require("attributes", "forest_type_attr", what="tipo di bosco e ospiti")
     lookup = load_lookup("forestale_vth", lookup_dir)
     cats = model.categories("forest_type")
     mapping = category_map(lookup, "forest_class", cats)
-    mapping_h = int_map(lookup, "hosts", model.remote_max("hosts"))
     code_attr = src.attr("forest_type_attr")
     name_attr = src.attr("forest_type_name_attr")
-    cols = [code_attr] + ([name_attr] if name_attr else [])
+    hosts_attrs = _as_list(src.attr("hosts_attrs"))
+    hosts_names = _as_list(src.attr("hosts_name_attrs"))
+    if hosts_names and len(hosts_names) != len(hosts_attrs):
+        raise ConfigError(f"[{src.id}] hosts_name_attrs deve avere tanti elementi quanti hosts_attrs")
+    cols = list(dict.fromkeys([code_attr] + ([name_attr] if name_attr else []) + hosts_attrs + hosts_names))
     path, gdf = _read_forest(src, grid, cols)
-    codes, labels = rasterize_codes(gdf, code_attr, grid)
-    common = dict(
-        cell_ha=grid.cell_area_ha, mask=mask, lookup=lookup, names=_names(gdf, code_attr, name_attr)
-    )
+    gdf = gdf.reset_index(drop=True)
+    index = rasterize_index(gdf, grid)
+    codes, labels = codes_from_index(index, gdf[code_attr].tolist())
+    common = dict(cell_ha=grid.cell_area_ha, mask=mask)
     detail = f"{path} attributo {code_attr}"
 
-    pts, unmapped = map_categories(codes, labels, mapping, cats, **common)
-    ft = ParamResult("forest_type", pts, src.id, detail + _empty_note(lookup, "forest_class"), unmapped)
-    pts_h, unmapped_h = map_ints(codes, labels, mapping_h, **common)
-    hosts = ParamResult("hosts", pts_h, src.id, detail + _empty_note(lookup, "hosts"), unmapped_h)
+    pts, unmapped = map_categories(
+        codes, labels, mapping, cats, lookup=lookup, names=_names(gdf, code_attr, name_attr), **common
+    )
+    ft = ParamResult(
+        "forest_type",
+        pts,
+        src.id,
+        detail + _empty_note(lookup, "forest_class"),
+        unmapped,
+        lookup.name,
+        draft_count(lookup),
+    )
+
+    if hosts_attrs:
+        sp_lookup = load_lookup("forestale_specie", lookup_dir)
+        sp_map = int_map(sp_lookup, "host", model.remote_max("hosts"))
+        values, present, unm = [], [], []
+        for i, a in enumerate(hosts_attrs):
+            c, lab = codes_from_index(index, gdf[a].tolist())
+            names = _names(gdf, a, hosts_names[i]) if hosts_names else {}
+            v, u = map_ints(c, lab, sp_map, lookup=sp_lookup, names=names, **common)
+            values.append(v)
+            present.append(c >= 0)
+            unm.append(u)
+        hosts = ParamResult(
+            "hosts",
+            combine_hosts(values, present),
+            src.id,
+            f"{path} attributi {', '.join(hosts_attrs)}" + _empty_note(sp_lookup, "host"),
+            _merge_unmapped(unm, mask),
+            sp_lookup.name,
+            draft_count(sp_lookup),
+        )
+    else:
+        mapping_h = int_map(lookup, "hosts", model.remote_max("hosts"))
+        pts_h, unmapped_h = map_ints(
+            codes, labels, mapping_h, lookup=lookup, names=_names(gdf, code_attr, name_attr), **common
+        )
+        hosts = ParamResult(
+            "hosts",
+            pts_h,
+            src.id,
+            detail + _empty_note(lookup, "hosts"),
+            unmapped_h,
+            lookup.name,
+            draft_count(lookup),
+        )
     return {"forest_type": ft, "hosts": hosts}

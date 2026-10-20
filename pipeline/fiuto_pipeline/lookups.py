@@ -19,6 +19,7 @@ SPECS = {
     "suoli_tessitura": ("valore_er", ["valore_er", "texture_id", "note", "fonte"]),
     "geologia_vth": ("unit_code", ["unit_code", "unit_name", "vth_class", "note", "fonte"]),
     "forestale_vth": ("tipo_er", ["tipo_er", "tipo_er_nome", "forest_class", "hosts", "note", "fonte"]),
+    "forestale_specie": ("specie_er", ["specie_er", "specie_nome", "host", "note", "fonte"]),
 }
 
 
@@ -127,3 +128,8 @@ def int_map(lookup: Lookup, column: str, max_value: int) -> dict[str, int]:
             )
         out[k] = n
     return out
+
+
+def draft_count(lookup: Lookup) -> int:
+    """Righe segnate come bozza (nota con "BOZZA"): il build lo scrive nel metadata."""
+    return sum(1 for r in lookup.rows.values() if "bozza" in (r.get("note") or "").lower())
