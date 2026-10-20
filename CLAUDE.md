@@ -23,7 +23,7 @@ Il documento di riferimento è il brief, importato qui sotto. Leggilo prima di q
 |---|---|---|
 | `model/` | Modello VTH condiviso (corrente: `vth-v2.json`) | letto dai test di entrambe le parti |
 | `pipeline/` | Python: dati regionali -> score remoto -> PMTiles vettoriale (layer `vth`). Dettagli e Fase 0 in `pipeline/README.md` | `cd pipeline && .venv/bin/python -m pytest` |
-| `app/` | PWA Vue 3 + TS + Vite, MapLibre 6 + pmtiles, Dexie, WebCrypto. Dettagli in `app/README.md` | `cd app && npm test && npm run build && npm run e2e` |
+| `app/` | PWA Vue 3 + TS + Vite, MapLibre 6 + pmtiles, Dexie, WebCrypto. Dettagli in `app/README.md` | `cd app && npm test && npm run build && npm run e2e && npm run e2e:offline` |
 | `.github/workflows/pages.yml` | Test, build e pubblicazione su GitHub Pages dal branch di default | gira da solo a ogni push su `app/` o `model/` |
 
 Prima di un push: i test della parte toccata devono passare; se tocchi `model/`, girano entrambe le suite. `npm run e2e` usa la fixture sintetica `app/e2e/fixtures/synthetic-vth.pmtiles`, generata da `pipeline/scripts/make_synthetic_fixture.py`: se cambia il contratto dei tile, rigenerala.
@@ -31,6 +31,7 @@ Prima di un push: i test della parte toccata devono passare; se tocchi `model/`,
 ## Stato
 
 - App (Fase 1 lato app e Fase 2): fatta e testata, pubblicata su https://daaanny90.github.io/tartufello/ (repo pubblico dal 20/10/2026). Calendario verificato sulla delibera, regole della L.R. 24/1991 come dati.
+- Pronta per il test sul campo (autunno 2026 - primavera 2027): mappa di base offline regionale (rilievo, curve, sentieri), spot col GPS mediato, ritorno agli spot, sopralluoghi. Guida per Danny in `CAMPO.md`. A primavera si riprende lo score.
 - Pipeline: Fase 0 fatta (esiti in `BRIEF.md` §12 e `pipeline/FASE0.md`), modello vth-v2. Score reale della Val Baganza pubblicato con l'app (`app/public/mappe/`). Distingue poco: un quarto del bosco con score vale esattamente 1. La roccia madre è classificata solo sul 18% e alcune righe di lookup sono ancora BOZZA.
 - Host ancora bloccati dal proxy dell'ambiente cloud: `agri.regione.emilia-romagna.it` (istituti faunistici, CAPP) e `datacatalog.regione.emilia-romagna.it` (raster del pH). Vanno aggiunti agli Allowed domains o scaricati a mano.
 

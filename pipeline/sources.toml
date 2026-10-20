@@ -270,3 +270,78 @@ local_path = ""
 webgis = "https://agri.regione.emilia-romagna.it/MotoreGis/PianoFaunisticoVenatorio/gis.html"
 notizia = "https://agricoltura.regione.emilia-romagna.it/fauna-e-caccia/notizie/2024/disponibile-su-piattaforma-webgis-la-cartografia-degli-istituti-faunistici-pubblici-e-privati"
 pagina = "https://agricoltura.regione.emilia-romagna.it/fauna-e-caccia/fauna/pianificazione/istituti-faunistici"
+
+# ===========================================================================
+# Basemap offline (comando `basemap`): sentieri, strade, acque, località.
+# Non entrano nello score. Verifica: 2026-10-20 (FASE0.md, "Basemap offline").
+# Le curve di livello e il rilievo vengono dal DTM 5x5 qui sopra ([sources.dtm]).
+
+# ---------------------------------------------------------------------------
+[sources.sentieri]
+title = "Rete escursionistica - Percorso escursionistico"
+use = "basemap offline: layer trails"
+params = []
+status = "ok"
+status_note = "2026-10-20: WFS 2.0.0 wfs/rete_escursionistica, typename portale_rete_escursionistica:Percorso_escursionistico (CRS nativo EPSG:25832, output GEOJSON in lon/lat, paginazione STARTINDEX/COUNT). Il filtro BBOX funziona solo in EPSG:4326 (con il bbox in metri risponde vuoto): per questo qui crs = EPSG:4326. Una feature per percorso: i tratti comuni a più percorsi si ripetono."
+license = "CC BY 4.0 (catalogo geoportale, voce 'Rete Escursionistica - Percorso escursionistico', id r_emiro:2014-12-19T155500), letta il 2026-10-20"
+crs = "EPSG:4326"
+local_path = ""
+
+[sources.sentieri.endpoints]
+wfs = "https://servizigis.regione.emilia-romagna.it/wfs/rete_escursionistica"
+wms = "https://servizigis.regione.emilia-romagna.it/wms/rete_escursionistica"
+
+[sources.sentieri.service]
+wfs_typename = "portale_rete_escursionistica:Percorso_escursionistico"
+wfs_version = "2.0.0"
+wfs_output_format = "GEOJSON"
+
+[sources.sentieri.attributes]
+# Campi visti nella risposta GetFeature del 2026-10-20.
+name_attr = "NOME_NUMERO"             # es. "Fonti Di Poiano - Peschiera Zamboni"
+ref_attr = "NUM"                      # numero del sentiero, es. "621"
+kind_attr = "SIGLA_CLASSIFICAZIONE"   # es. "SE" = Sentiero escursionistico (DESCRIZIONE_CLASSIFICAZIONE)
+difficulty_attr = "SIGLA_DIFFICOLTA"  # es. "E" = Escursionistico (DESCRIZIONE_DIFFICOLTA)
+
+# ---------------------------------------------------------------------------
+[sources.dbtr]
+title = "DBTR Database topografico regionale - strade, corsi d'acqua, località"
+use = "basemap offline: layer roads (strade e viabilità secondaria), water, places"
+params = []
+status = "ok"
+status_note = "2026-10-20: MapServer ArcGIS REST pubblico geoags/rest/services/portale/dbtr/MapServer: query anonima con f=geojson, outSR=4326, paginazione (maxRecordCount 1000). Il WFS wfs/dbtr chiede autenticazione (HTTP 401) e il download ufficiale (download-dbtopografico) è un'estrazione su richiesta: la REST non è indicata nel catalogo come canale di download [da verificare con la Regione]. EST ed EVS non hanno attributi di classe (tipo, fondo): kind viene dal layer."
+license = "CC BY 4.0 (catalogo geoportale, voci 'DBTR - Elemento stradale - (EST_GLI)', 'DBTR - Elemento viabilità mista secondaria - (EVS_GLI)', 'DBTR - Corso d'acqua naturale - (FIU_GLI)', 'DBTR - Località abitata (puntuale) - (LAB_GPT)'), letta il 2026-10-20"
+crs = "EPSG:7791"  # inSR delle query (il servizio è in RDN2008 / UTM 32N)
+local_path = ""
+
+[sources.dbtr.endpoints]
+rest = "https://servizigis.regione.emilia-romagna.it/geoags/rest/services/portale/dbtr/MapServer"
+wms = "https://servizigis.regione.emilia-romagna.it/wms/dbtr"
+pagina_download = "https://geoportale.regione.emilia-romagna.it/download-data/download-dbtopografico"  # estrazione su richiesta, non un file
+
+[sources.dbtr.attributes]
+# Id dei layer e campi letti dal MapServer il 2026-10-20 (/<id>?f=json).
+roads_layers = { strada = 13, carrareccia = 31 }  # 13 EST_Elemento_stradale, 31 EVS_Elemento_viabilita_mista_secondaria
+# "carrareccia" per EVS è un'interpretazione del nome della classe ("viabilità mista secondaria") [da verificare sulle specifiche DBTR]
+water_layer = 35            # FIU_Corso_di_acqua_naturale
+water_name_attr = "NOME"
+places_layer = 2            # LAB_Localita_abitata_puntuale
+places_name_attr = "NM_LAB"
+places_kind_attr = "D_TY_LAB"  # es. "capoluogo di Comune", "centro abitato", "frazione", "nucleo abitato"
+
+# ---------------------------------------------------------------------------
+[sources.dbtr_sentieri]
+title = "DBTR Sentiero (SEN_GLI)"
+use = "basemap offline: layer roads, kind = sentiero"
+params = []
+status = "ok"
+status_note = "2026-10-20: stesso MapServer REST del DBTR, layer 33 SEN_Sentiero (nessun attributo oltre ai metadati). Sorgente separata perché la licenza è diversa (CC BY 3.0)."
+license = "CC BY 3.0 (catalogo geoportale, voce 'DBTR - Sentiero - (SEN_GLI)', https://creativecommons.org/licenses/by/3.0/legalcode.it), letta il 2026-10-20"
+crs = "EPSG:7791"
+local_path = ""
+
+[sources.dbtr_sentieri.endpoints]
+rest = "https://servizigis.regione.emilia-romagna.it/geoags/rest/services/portale/dbtr/MapServer"
+
+[sources.dbtr_sentieri.attributes]
+roads_layers = { sentiero = 33 }  # 33 SEN_Sentiero

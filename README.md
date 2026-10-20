@@ -1,6 +1,6 @@
 # fiuto
 
-**App:** https://daaanny90.github.io/tartufello/ (da Chrome su Android: menu → Installa app)
+**App:** https://daaanny90.github.io/tartufello/ (da Chrome su Android: menu → Installa app). Per il test sul campo: [`CAMPO.md`](CAMPO.md).
 
 App personale per decidere **dove portare il cane a cercare tartufo nero** (*Tuber aestivum* / *uncinatum*) nell'Appennino parmense. Il perché, il modello e i dati sono in [`BRIEF.md`](BRIEF.md).
 

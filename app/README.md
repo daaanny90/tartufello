@@ -10,6 +10,7 @@ npm run dev        # sviluppo
 npm test           # unit test (Vitest)
 npm run build      # typecheck + build di produzione in dist/
 npm run e2e        # smoke test sul build, con Chromium locale e GPS simulato
+npm run e2e:offline  # scarica la zona pubblicata, stacca la rete, la mappa deve funzionare
 ```
 
 `npm run e2e` vuole il build già fatto e Chromium in `/opt/pw-browsers/chromium` (o `CHROMIUM_PATH`). Usa la fixture sintetica `e2e/fixtures/synthetic-vth.pmtiles` se c'è; le schermate finiscono in `e2e/screenshots/` (o `SCREENSHOTS`).
@@ -24,7 +25,7 @@ In alternativa va bene qualsiasi hosting statico in HTTPS (service worker e GPS 
 
 ### Mappe pubblicate con l'app
 
-`node scripts/publish-map.mjs <file.pmtiles> <id> "<titolo>"` copia uno score della pipeline in `public/mappe/` e aggiorna `index.json`. In Altro compare il pulsante **Scarica**: un tocco e la mappa finisce nel telefono. I file sintetici vengono rifiutati. Sono dati derivati da open data CC BY della Regione, senza niente di personale: spot, tracce e ritrovamenti non lasciano mai il telefono.
+`node scripts/publish-map.mjs <file.pmtiles> <id> "<titolo>" "<zona>"` copia un file della pipeline (score, mappa di base o rilievo: lo riconosce da solo) in `public/mappe/` e aggiorna `index.json`. In Altro, **Pronta per il campo → Scarica tutto** porta nel telefono tutti i file della zona e passa lo sfondo su offline. I file sintetici vengono rifiutati. Sono dati derivati da open data CC BY della Regione, senza niente di personale: spot, tracce e ritrovamenti non lasciano mai il telefono.
 
 ## Struttura
 

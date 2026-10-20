@@ -148,7 +148,9 @@ function addScore(m: MlMap) {
   if (m.getSource('vth')) m.removeSource('vth')
   if (!mapFiles.score) return
   m.addSource('vth', { type: 'vector', url: sourceUrl('score') })
-  const before = m.getLayer('track-line') ? 'track-line' : undefined
+  // Sotto curve, sentieri e nomi della mappa di base: in bosco servono leggibili.
+  const firstLabel = m.getStyle().layers.find((l) => l.type === 'symbol' && !['spots-label'].includes(l.id))?.id
+  const before = m.getLayer('base-water') ? 'base-water' : (firstLabel ?? (m.getLayer('track-line') ? 'track-line' : undefined))
   for (const l of scoreLayers(ui.view)) m.addLayer(l, before)
 }
 

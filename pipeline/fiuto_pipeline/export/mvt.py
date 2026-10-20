@@ -139,3 +139,18 @@ def decode_tile(data: bytes) -> list[dict]:
             )
         layers.append({"name": name, "extent": extent, "features": features})
     return layers
+
+
+def layer_names(data: bytes) -> list[str]:
+    """Nomi dei layer di un tile (eventualmente gzip), senza decodificare le feature."""
+    if data[:2] == b"\x1f\x8b":
+        data = gzip.decompress(data)
+    names = []
+    for field, _wire, val in _fields(data):
+        if field != 3:
+            continue
+        for lf, _lw, lv in _fields(val):
+            if lf == 1:
+                names.append(lv.decode("utf-8"))
+                break
+    return names

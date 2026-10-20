@@ -302,3 +302,81 @@ def run_fetch(
     if m == "wfs":
         return fetch_wfs(src, bbox, force=force, log=log)
     return fetch_wcs(src, bbox, force=force, align=align, log=log)
+
+
+# --- ArcGIS REST (MapServer/FeatureServer query) ----------------------------------------
+
+
+def arcgis_query_params(
+    bbox: tuple[float, float, float, float], *, in_epsg: int, fields: list[str], start: int, count: int
+) -> list[tuple[str, str]]:
+    """Parametri di /query: envelope nel CRS dato, risultato GeoJSON in EPSG:4326, pagine ordinate."""
+    minx, miny, maxx, maxy = bbox
+    return [
+        ("where", "1=1"),
+        ("geometry", f"{minx!r},{miny!r},{maxx!r},{maxy!r}"),
+        ("geometryType", "esriGeometryEnvelope"),
+        ("inSR", str(in_epsg)),
+        ("spatialRel", "esriSpatialRelIntersects"),
+        ("outFields", ",".join(fields) if fields else "OBJECTID"),
+        ("returnGeometry", "true"),
+        ("outSR", "4326"),
+        ("orderByFields", "OBJECTID"),
+        ("resultOffset", str(start)),
+        ("resultRecordCount", str(count)),
+        ("f", "geojson"),
+    ]
+
+
+def fetch_arcgis_layer(
+    src: Source,
+    layer: int | str,
+    bbox: tuple[float, float, float, float],
+    *,
+    fields: list[str],
+    force: bool = False,
+    page_size: int = 1000,
+    log=print,
+):
+    """Interroga un layer di un MapServer ArcGIS (endpoints.rest) a pagine; GeoDataFrame in EPSG:4326.
+
+    Le pagine restano in cache in data/raw/<sorgente>/rest/. `bbox` è nel CRS della sorgente.
+    """
+    import geopandas as gpd
+    from pyproj import CRS
+
+    base = src.endpoint("rest")
+    if not base:
+        raise NotConfigured(f"[{src.id}] endpoints.rest vuoto [da verificare]")
+    if not src.crs:
+        raise ConfigError(f"[{src.id}] manca crs in sources.toml")
+    epsg = CRS.from_user_input(src.crs).to_epsg()
+    url = f"{base.rstrip('/')}/{layer}/query"
+    key = hashlib.sha1(json.dumps([url, list(bbox), sorted(fields), page_size]).encode()).hexdigest()[:10]
+    pdir = src.cache_dir / "rest" / f"{layer}_{key}"
+    pdir.mkdir(parents=True, exist_ok=True)
+    sess = session()
+    feats: list[dict] = []
+    start = 0
+    while True:
+        page = pdir / f"page_{start:08d}.json"
+        if page.exists() and page.stat().st_size > 0 and not force:
+            data = json.loads(page.read_text(encoding="utf-8"))
+        else:
+            params = arcgis_query_params(bbox, in_epsg=epsg, fields=fields, start=start, count=page_size)
+            log(f"[{src.id}] query layer {layer} da {start}")
+            resp = get(sess, url, params=params)
+            try:
+                data = resp.json()
+            except ValueError as exc:
+                raise FiutoError(f"[{src.id}] risposta non JSON da {url}") from exc
+            if "error" in data:
+                raise FiutoError(f"[{src.id}] errore ArcGIS da {url}: {data['error']}")
+            page.write_text(json.dumps(data), encoding="utf-8")
+        got = data.get("features", [])
+        feats += got
+        if len(got) < page_size:
+            break
+        start += page_size
+    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326") if feats else gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
+    return gdf

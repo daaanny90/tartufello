@@ -42,7 +42,19 @@ PARAM_SOURCES = {
 }
 
 
-def attribution(srcs: list) -> str:
+# Licenze riconosciute nel campo license di sources.toml (deve iniziare così).
+KNOWN_LICENCES = ("CC BY 4.0", "CC BY 3.0")
+
+
+def licence_short(text: str) -> str:
+    t = (text or "").strip()
+    for lic in KNOWN_LICENCES:
+        if t.startswith(lic):
+            return lic
+    return "licenza da verificare"
+
+
+def attribution(srcs: list, credit: str = "Elaborazione fiuto (VTH).") -> str:
     """Attribuzione per il metadata dei tile: la CC BY chiede di citare fonte e licenza.
 
     L'app la mostra nell'angolo della mappa, quindi resta corta: titoli abbreviati
@@ -50,11 +62,12 @@ def attribution(srcs: list) -> str:
     """
     by_lic: dict[str, list[str]] = {}
     for s in srcs:
-        lic = "CC BY 4.0" if s.license.strip().startswith("CC BY 4.0") else "licenza da verificare"
         short = (s.title or s.id).split(" - ")[0].split(" (")[0]
-        by_lic.setdefault(lic, []).append(short)
+        titles = by_lic.setdefault(licence_short(s.license), [])
+        if short not in titles:
+            titles.append(short)
     parts = [f"{lic}: {', '.join(titles)}" for lic, titles in by_lic.items()]
-    return "Dati © Regione Emilia-Romagna, " + "; ".join(parts) + ". Elaborazione fiuto (VTH)."
+    return "Dati © Regione Emilia-Romagna, " + "; ".join(parts) + ". " + credit
 
 
 def _derive_one(pid: str, src: Source, grid: Grid, model, mask, lookup_dir):

@@ -256,6 +256,7 @@ Dettagli, metodo e decisioni aperte in `pipeline/FASE0.md`; valori verificati in
 - **Parchi e Natura 2000**: ok, CC BY 4.0, WFS `wfs/areeprotette_natura2000` e shapefile (Natura 2000 aggiornata all'8/7/2024).
 - **Istituti faunistici (art. 15)**: lo strato esiste nel webGIS del Piano faunistico venatorio (`https://agri.regione.emilia-romagna.it/MotoreGis/PianoFaunisticoVenatorio/gis.html`, export shapefile), host non raggiungibile dall'ambiente cloud: da esportare a mano. Licenza da verificare.
 - **CAPP, ERG5**: non verificati (host non raggiungibili; CAPP senza download noto).
+- **Basemap offline** (comando `basemap`, 20/10/2026): rilievo e curve di livello dal DTM 5x5; sentieri dal WFS `https://servizigis.regione.emilia-romagna.it/wfs/rete_escursionistica` (CC BY 4.0, BBOX solo in EPSG:4326); strade, acque e località dal DBTR via REST `https://servizigis.regione.emilia-romagna.it/geoags/rest/services/portale/dbtr/MapServer` (CC BY 4.0; i sentieri DBTR SEN_GLI sono CC BY 3.0). Il WFS del DBTR chiede autenticazione: se la REST sia un canale di scarico accettato va chiesto alla Regione. "Carrareccia" per la viabilità mista secondaria (EVS) è **[da verificare]**. Dettagli in `pipeline/FASE0.md`.
 - Nota: i dati regionali oggi sono in EPSG:7791 (RDN2008 / UTM 32N) o 25832, non più 5659; la pipeline riproietta.
 
 ### Modello vth-v2 (decisioni del 20/10/2026)

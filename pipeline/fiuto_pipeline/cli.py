@@ -50,6 +50,15 @@ def _parser() -> argparse.ArgumentParser:
         help="solo per prova: calcola anche senza carta forestale (il modello vale solo in bosco)",
     )
     b.add_argument("--no-tiles", action="store_true", help="salta poligoni e PMTiles (solo GeoTIFF e report)")
+
+    bm = sub.add_parser(
+        "basemap",
+        help="mappa offline dell'AOI: rilievo (PMTiles raster) e base vettoriale (curve, sentieri, strade, acque, località)",
+    )
+    bm.add_argument("--aoi", required=True, help="nome dell'AOI in aoi.toml (il DTM va scaricato prima con fetch dtm)")
+    bm.add_argument("--out", type=Path, help="cartella di output (default: data/build/<aoi>/)")
+    bm.add_argument("--only", choices=["rilievo", "base"], help="scrive solo uno dei due file")
+    bm.add_argument("--force", action="store_true", help="riscarica sentieri e DBTR anche se sono in cache")
     return p
 
 
@@ -63,9 +72,11 @@ def _cmd_capabilities(args) -> int:
 
 
 def _cmd_fetch(args) -> int:
+    from pyproj import CRS
+
     from .config import get_source, load_aois, load_build_config, load_sources
     from .fetch import run_fetch
-    from .grid import resolve_aoi
+    from .grid import fetch_bbox
 
     src = get_source(load_sources(args.sources, raw_dir=args.raw_dir), args.source)
     bbox = None
@@ -77,10 +88,9 @@ def _cmd_fetch(args) -> int:
         if not src.crs:
             raise FiutoError(f"[{src.id}] manca crs in sources.toml")
         cfg = load_build_config(args.build_config)
-        a = resolve_aoi(aois[args.aoi], src.crs)
-        m = 4 * cfg.cell_size  # margine: la media sui bordi ha bisogno di dati attorno
-        bbox = (a.bounds[0] - m, a.bounds[1] - m, a.bounds[2] + m, a.bounds[3] + m)
-        align = cfg.cell_size
+        # margine in metri (la media sui bordi ha bisogno di dati attorno), anche se la sorgente è in gradi
+        bbox = fetch_bbox(aois[args.aoi], src.crs, 4 * cfg.cell_size, metric_crs=cfg.crs)
+        align = cfg.cell_size if CRS.from_user_input(src.crs).is_projected else None
     path = run_fetch(src, method=args.method, bbox=bbox, force=args.force, align=align)
     if path:
         print(f"Fatto: {path}\n(il build lo usa se [sources.{src.id}] local_path è vuoto)")
@@ -114,6 +124,21 @@ def _cmd_build(args) -> int:
     return 0
 
 
+def _cmd_basemap(args) -> int:
+    from .basemap import run_basemap
+
+    run_basemap(
+        args.aoi,
+        sources_path=args.sources,
+        aoi_path=args.aoi_file,
+        raw_dir=args.raw_dir,
+        out_dir=args.out,
+        only=args.only,
+        force=args.force,
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     warnings.formatwarning = lambda msg, cat, *a, **k: f"avviso: {msg}\n"
@@ -132,6 +157,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_prepare(args)
         if args.cmd == "build":
             return _cmd_build(args)
+        if args.cmd == "basemap":
+            return _cmd_basemap(args)
     except NotConfigured as exc:
         print(f"non configurato: {exc}", file=sys.stderr)
         return 2

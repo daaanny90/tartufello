@@ -178,3 +178,35 @@ Build Val Baganza con vth-v2:
 - **score**: presente sul 64,8% (limite: copertura della carta dei suoli); media 0,857, minimo 0,267. Per decili: 0, 0, 444, 3845, 6892, 7066, 31568, 56633, 116120, 203275 celle;
 - **PMTiles**: 3,0 MB, 19840 poligoni.
 - Restano non classificati: castagneti (881 ha in bosco) e unità geologiche come frane quiescenti a2 (6133 ha), FYS2 (4196), MCS (3228), SCB (2208).
+
+## Aggiornamento 20/10/2026: basemap offline
+
+Comando `python -m fiuto_pipeline basemap --aoi <aoi>` (dettagli in `README.md`). Sorgenti in `sources.toml` (`dtm`, `sentieri`, `dbtr`, `dbtr_sentieri`), tutte verificate il 20/10/2026:
+
+| Layer | Sorgente | Accesso | Licenza |
+|---|---|---|---|
+| rilievo, `contours` | DTM 5x5 (già in Fase 0) | WCS `wcs/dtm5x5` | CC BY 4.0 |
+| `trails` | Rete escursionistica - Percorso escursionistico (catalogo: `r_emiro:2014-12-19T155500`) | WFS 2.0.0 `https://servizigis.regione.emilia-romagna.it/wfs/rete_escursionistica`, typename `portale_rete_escursionistica:Percorso_escursionistico` | CC BY 4.0 |
+| `roads` (strada, carrareccia), `water`, `places` | DBTR: EST_GLI, EVS_GLI, FIU_GLI, LAB_GPT | REST `https://servizigis.regione.emilia-romagna.it/geoags/rest/services/portale/dbtr/MapServer` (layer 13, 31, 35, 2) | CC BY 4.0 |
+| `roads` (sentiero) | DBTR: SEN_GLI | stessa REST, layer 33 | **CC BY 3.0** |
+
+Licenze dal catalogo del geoportale (voci citate in `sources.toml`).
+
+Note sull'accesso:
+- **Sentieri**: il WFS è aperto, ma il filtro BBOX funziona solo in EPSG:4326 (con il bbox in metri risponde vuoto). Quindi `[sources.sentieri] crs = "EPSG:4326"`. Ogni feature è un percorso intero: si ritaglia sull'AOI.
+- **DBTR**: il WFS `wfs/dbtr` chiede autenticazione (HTTP 401) e il download ufficiale (`download-dbtopografico`) è un'estrazione su richiesta. Il MapServer REST risponde a query anonime (`f=geojson`, `outSR=4326`, paginazione da 1000). **Da chiarire con la Regione** se è un canale di scarico accettato: il catalogo non lo indica come tale.
+- **Classi stradali**: EST ed EVS non hanno attributi di tipo o fondo. `kind` viene dal layer: EST → `strada`, EVS → `carrareccia`, SEN → `sentiero`. "Carrareccia" per la "viabilità mista secondaria" è un'interpretazione del nome della classe **[da verificare sulle specifiche DBTR]**.
+
+Esito Val Baganza (`val_baganza_approx`, ~2 minuti con lo scarico, ~1,5 a cache piena):
+- `rilievo_val_baganza_approx.pmtiles`: **4,8 MB**, WEBP, z10-15, 1649 tile (in PNG sarebbero 50 MB).
+- `base_val_baganza_approx.pmtiles`: **10,9 MB**, z10-15, 1648 tile:
+  - `contours`: 2238 curve (478 maggiori);
+  - `trails`: 73 percorsi dal WFS (72 dopo il ritaglio sull'AOI);
+  - `roads`: 9848 strade, 11848 carrarecce, 6000 sentieri DBTR (conteggi verificati con `returnCountOnly`);
+  - `water`: 933 elementi DBTR, nome dove c'è;
+  - `places`: 399 località.
+
+Non usati (esistono, se servono):
+- curve di livello ufficiali del DBTR (layer 23 CLV): le curve si ricavano dal DTM;
+- toponimi DBTR (layer 45 `TOP_Toponimo_scritta_cartografica`): contenuto e licenza non controllati;
+- punti della rete escursionistica (per esempio `Sorgente_o_fontana`, `Parcheggio`, rifugi): nel catalogo quelli controllati sono CC BY 4.0; non scaricati.

@@ -9,6 +9,22 @@
       "built": "2026-10-20T06:09:01+00:00",
       "size": 3035525,
       "warning": "tabelle di lookup in BOZZA, da rivedere: forestale_vth (6 righe), geologia_vth (11 righe), suoli_tessitura (12 righe)"
+    },
+    {
+      "file": "val-baganza-base.pmtiles",
+      "title": "Mappa di base Val Baganza",
+      "kind": "basemap",
+      "area": "Val Baganza",
+      "built": "2026-10-20T08:01:32+00:00",
+      "size": 10875721
+    },
+    {
+      "file": "val-baganza-rilievo.pmtiles",
+      "title": "Rilievo Val Baganza",
+      "kind": "rilievo",
+      "area": "Val Baganza",
+      "built": "2026-10-20T08:01:32+00:00",
+      "size": 4823745
     }
   ]
 }

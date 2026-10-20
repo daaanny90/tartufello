@@ -27,6 +27,7 @@ fiuto_pipeline/
   derive/           un parametro VTH per funzione (uint8, 255 = non disponibile)
   score/            somma normalizzata, GeoTIFF multibanda, report
   export/           poligoni per combinazione di punti -> GeoJSONSeq + PMTiles
+  basemap/          mappa offline: rilievo (raster) e base vettoriale (curve, sentieri, strade, acque, località)
 scripts/make_synthetic_fixture.py   fixture SINTETICA per i test dell'app
 data/               (fuori da git) raw/ = download, build/<aoi>/ = output
 ```
@@ -40,6 +41,7 @@ data/               (fuori da git) raw/ = download, build/<aoi>/ = output
 .venv/bin/python -m fiuto_pipeline fetch <sorgente> [--aoi <nome>] [--method url|wfs|wcs] [--force]
 .venv/bin/python -m fiuto_pipeline prepare suoli                # pH/CaCO3/tessitura 0-30 cm dai profili
 .venv/bin/python -m fiuto_pipeline build --aoi <nome> [--no-forest-mask] [--no-tiles] [--out DIR]
+.venv/bin/python -m fiuto_pipeline basemap --aoi <nome> [--only rilievo|base] [--force] [--out DIR]
 ```
 
 Opzioni globali: `--sources`, `--aoi-file`, `--build-config`, `--lookups`, `--raw-dir` (cartella dei download, default `data/raw/`). Codici di uscita: 0 ok, 1 errore, 2 sorgente non configurata.
@@ -90,6 +92,21 @@ Per ogni cella nella maschera bosco: `pts` = somma dei punti dei parametri remot
 - Zoom 8-14 (`build.toml`). Semplificazione del driver MVT `SIMPLIFICATION = 1` unità di tile (1/4096 del lato): circa 27 m a z8, 1,7 m a z12, 0,4 m a z14 alla latitudine di Parma, quindi sotto la cella dove si guarda da vicino.
 - Nota per l'app: GDAL scrive `score` 0 e 1 come interi MVT (in JS è lo stesso numero).
 - Dopo la scrittura il file viene riletto (GDAL + decoder MVT interno) e controllato contro il contratto: `pts`, `max`, `n` coerenti con i parametri presenti, `score` = `pts/max`.
+
+## Basemap offline (`basemap`)
+
+Prima serve il DTM in cache (`fetch dtm --aoi <nome>`); sentieri e DBTR li scarica il comando stesso (cache in `data/raw/sentieri/`, `data/raw/dbtr/rest/`, `data/raw/dbtr_sentieri/rest/`). Scrive in `data/build/<aoi>/`:
+
+- `rilievo_<aoi>.pmtiles`: PMTiles **raster**. DTM 5x5 mediato a 10 m, ombreggiatura di Horn (sole a 315° e 45°, pianura = grigio 180), riproiettato in EPSG:3857 alla risoluzione di z15, tile WEBP qualità 80 (PNG se GDAL non ha WEBP) con alfa (nodata trasparente; i tile pieni escono RGB). Il driver PMTiles di GDAL non scrive raster: si passa da MBTiles (overview con media) e `pmtiles.convert`. Con un'AOI di pochi km GDAL salta le overview più piccole e i primi zoom mancano (il report lo dice).
+- `base_<aoi>.pmtiles`: PMTiles **vettoriale**, z10-15, metadata `fiuto_basemap: true`, `aoi`, `attribution`, `sources`, eventuale `missing` (layer non scritti e perché). Layer e proprietà:
+  - `contours`: `ele` (intero, m), `major` (bool, ogni 50 m). Curve ogni 10 m da DTM a 10 m lisciato (binomiale 5x5), semplificate a 2 m, scartate sotto i 100 m. Sotto z13 solo le maggiori.
+  - `trails`: `name`, `ref` (numero), `kind` (sigla di classificazione, es. SE), `difficulty` (es. T, E, EE) dalla rete escursionistica regionale.
+  - `roads`: `kind` = `strada` (DBTR EST), `carrareccia` (DBTR EVS, viabilità mista secondaria: interpretazione da verificare), `sentiero` (DBTR SEN). Sotto z12 solo `strada`.
+  - `water`: `name` (se c'è) dai corsi d'acqua naturali DBTR (FIU).
+  - `places`: `name`, `kind` (tipo di località, es. "frazione") dalle località abitate puntuali DBTR (LAB).
+- `basemap_<aoi>.json`: report con dimensioni, conteggi, sorgenti e mancanze.
+
+Il driver PMTiles di GDAL scrive un layer per file: si scrive un PMTiles per layer (o per fascia di zoom) e poi si uniscono i tile concatenando gli MVT. Due fasce dello stesso layer devono avere zoom disgiunti (controllato).
 
 ## Fixture sintetica per l'app
 

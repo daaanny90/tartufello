@@ -96,3 +96,21 @@ def resolve_aoi(cfg: AOIConfig, work_crs: str) -> AOI:
         raise ConfigError(f"[aoi.{cfg.name}] il file {cfg.path} non dichiara il CRS")
     geom = gdf.to_crs(work_crs).geometry.union_all()
     return AOI(cfg.name, cfg.description, cfg.approximate, tuple(geom.bounds), geom)
+
+
+def fetch_bbox(
+    cfg: AOIConfig, src_crs: str, margin_m: float, metric_crs: str = "EPSG:5659"
+) -> tuple[float, float, float, float]:
+    """Bbox dell'AOI nel CRS della sorgente, allargato di `margin_m` metri.
+
+    Con un CRS proiettato il margine si somma direttamente; con un CRS geografico
+    (gradi, es. EPSG:4326) si allarga nel CRS metrico e poi si riproietta.
+    """
+    crs = CRS.from_user_input(src_crs)
+    if crs.is_projected:
+        b = resolve_aoi(cfg, src_crs).bounds
+        return (b[0] - margin_m, b[1] - margin_m, b[2] + margin_m, b[3] + margin_m)
+    b = resolve_aoi(cfg, metric_crs).bounds
+    padded = (b[0] - margin_m, b[1] - margin_m, b[2] + margin_m, b[3] + margin_m)
+    t = Transformer.from_crs(metric_crs, crs, always_xy=True)
+    return tuple(t.transform_bounds(*padded, densify_pts=21))

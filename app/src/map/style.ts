@@ -203,7 +203,8 @@ export function scoreLayers(view: ScoreView): LayerSpecification[] {
       layout: { visibility },
       paint: {
         'fill-color': view.kind === 'param' ? paramColor(view.param, view.max) : scoreColor,
-        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 15, 0.4],
+        // Da lontano serve vedere le zone, da vicino il terreno sotto.
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 13, 0.45, 16, 0.25],
       },
     },
     {

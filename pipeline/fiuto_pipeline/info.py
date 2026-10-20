@@ -45,6 +45,8 @@ def _fetch_state(src: Source) -> str:
         if not miss:
             return f"pronto ({method})"
         parts.append(f"{method}: mancano {', '.join(miss)}")
+    if not parts and src.endpoint("rest"):
+        return "dentro il comando basemap (query REST, cache in data/raw/<sorgente>/rest/)"
     return "; ".join(parts) if parts else "nessun metodo automatico: scarico a mano + local_path"
 
 

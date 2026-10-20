@@ -10,7 +10,8 @@
     "typecheck": "vue-tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "node e2e/smoke.mjs"
+    "e2e": "node e2e/smoke.mjs",
+    "e2e:offline": "node e2e/offline.mjs"
   },
   "dependencies": {
     "@mapbox/vector-tile": "^2.0.5",
