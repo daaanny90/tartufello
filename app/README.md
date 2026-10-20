@@ -14,14 +14,24 @@ npm run e2e        # smoke test sul build, con Chromium locale e GPS simulato
 
 `npm run e2e` vuole il build già fatto e Chromium in `/opt/pw-browsers/chromium` (o `CHROMIUM_PATH`). Usa la fixture sintetica `e2e/fixtures/synthetic-vth.pmtiles` se c'è; le schermate finiscono in `e2e/screenshots/` (o `SCREENSHOTS`).
 
-Per installarla sul telefono serve HTTPS (il service worker e il GPS lo richiedono): hosting statico qualsiasi o il server di casa dietro un certificato.
+## Pubblicazione
+
+Il workflow `.github/workflows/pages.yml` fa test e build a ogni push sul branch di default e pubblica su GitHub Pages (`https://<utente>.github.io/<repo>/`). La prima volta va abilitato a mano: Settings → Pages → Source: **GitHub Actions**. Su repo privato Pages richiede GitHub Pro.
+
+Il build in sottocartella si prova in locale con `FIUTO_BASE=/tartufello/ npm run build` e `FIUTO_BASE=/tartufello/ npm run e2e`.
+
+In alternativa va bene qualsiasi hosting statico in HTTPS (service worker e GPS lo richiedono), anche il server di casa.
+
+### Mappe pubblicate con l'app
+
+`node scripts/publish-map.mjs <file.pmtiles> <id> "<titolo>"` copia uno score della pipeline in `public/mappe/` e aggiorna `index.json`. In Altro compare il pulsante **Scarica**: un tocco e la mappa finisce nel telefono. I file sintetici vengono rifiutati. Sono dati derivati da open data CC BY della Regione, senza niente di personale: spot, tracce e ritrovamenti non lasciano mai il telefono.
 
 ## Struttura
 
 | Cartella | Cosa fa |
 |---|---|
 | `src/rules/` | Calendario ER 2026-2030 come dati (`er-calendar-2026-2030.json`) e calcolo aperto/chiuso per specie e zona |
-| `src/field/` | Motore VTH: legge `../model/vth-v1.json`, combina osservazioni di campo e punti della mappa, scala a 36 |
+| `src/field/` | Motore VTH: legge `../model/vth-v2.json`, combina osservazioni di campo e punti della mappa, scala a 36 |
 | `src/map/` | Stile MapLibre, file PMTiles in IndexedDB letti con `FileSource`, lettura dello score in un punto senza mappa |
 | `src/diary/` | Database Dexie (spot, valutazioni, uscite, ritrovamenti), registrazione traccia GPS |
 | `src/backup/` | Backup cifrato: PBKDF2-SHA256 (600k iterazioni) + AES-GCM 256, gzip, foto incluse |

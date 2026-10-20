@@ -4,6 +4,9 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Percorso di pubblicazione: "/" in locale, "/<repo>/" su GitHub Pages (lo imposta il workflow).
+const base = process.env.FIUTO_BASE ?? '/'
+
 const tileCache = (name: string, urlPattern: RegExp) => ({
   urlPattern,
   handler: 'CacheFirst' as const,
@@ -16,6 +19,7 @@ const tileCache = (name: string, urlPattern: RegExp) => ({
 })
 
 export default defineConfig({
+  base,
   plugins: [
     vue(),
     VitePWA({
@@ -30,7 +34,8 @@ export default defineConfig({
         background_color: '#f6f1e7',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        start_url: base,
+        scope: base,
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -41,7 +46,6 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,pbf,json,txt}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        navigateFallback: '/index.html',
         runtimeCaching: [
           tileCache('tiles-opentopomap', /^https:\/\/[abc]\.tile\.opentopomap\.org\//),
           tileCache('tiles-osm', /^https:\/\/tile\.openstreetmap\.org\//),

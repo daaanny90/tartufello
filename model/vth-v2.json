@@ -1,0 +1,593 @@
+{
+  "id": "vth-v2",
+  "title": "Virtual Truffle Hunting adattato all'Appennino parmense, versione 2",
+  "target": "Tuber aestivum (= T. uncinatum)",
+  "source": {
+    "citation": "Rosa-Gruszecka A., Hilszczańska D., Pacioni G., Forests 2021, 12(9), 1239",
+    "doi": "10.3390/f12091239",
+    "license": "CC BY"
+  },
+  "notes": [
+    "Struttura di punteggio presa dal paper, non verità: VTH è tarato su Polonia (vedi BRIEF.md §4.1).",
+    "Le soglie numeriche si valutano con regole ordinate, vince la prima che corrisponde. I buchi tra gli intervalli del paper (es. pH 7,1-7,2) sono chiusi con intervalli semiaperti.",
+    "Ogni parametro vale da 0 a 3 punti; massimo teorico 36."
+  ],
+  "maxPerParam": 3,
+  "maxTotal": 36,
+  "classes": [
+    {
+      "id": "alta",
+      "label": "Alta",
+      "min36": 31,
+      "color": "#1a9850"
+    },
+    {
+      "id": "media",
+      "label": "Media",
+      "min36": 25,
+      "color": "#a6d96a"
+    },
+    {
+      "id": "bassa",
+      "label": "Bassa",
+      "min36": 19,
+      "color": "#fee08b"
+    },
+    {
+      "id": "nulla",
+      "label": "Nulla",
+      "min36": 0,
+      "color": "#d73027"
+    }
+  ],
+  "field": {
+    "minParamsForClass": 8,
+    "minParamsNote": "Scelta di progetto, non del paper: con meno di 8 parametri valutati (campo + mappa) la classe sul posto è provvisoria, perché la normalizzazione su pochi parametri gonfia o sgonfia il punteggio."
+  },
+  "remote": {
+    "minParams": 4,
+    "minParamsNote": "Scelta di progetto, non del paper: sotto 4 parametri remoti disponibili lo score non viene calcolato (dati insufficienti).",
+    "normalization": "score = somma punti / somma dei massimi ottenibili da remoto per i parametri disponibili in quella cella"
+  },
+  "params": [
+    {
+      "id": "bedrock",
+      "label": "Roccia madre",
+      "kind": "category",
+      "remote": {
+        "available": true,
+        "max": 3,
+        "from": "carta geologica ER + tabella di lookup unità -> classe (pipeline/lookups)"
+      },
+      "field": true,
+      "categories": [
+        {
+          "id": "calcari",
+          "label": "Calcari, calcari marnosi, gessi, creta, oolite",
+          "points": 3
+        },
+        {
+          "id": "marne",
+          "label": "Marne, travertino, terra rossa",
+          "points": 2
+        },
+        {
+          "id": "dolomie",
+          "label": "Dolomie, scisti marnosi, altre rocce con calcio",
+          "points": 1
+        },
+        {
+          "id": "senza_calcio",
+          "label": "Rocce senza calcio",
+          "points": 0
+        }
+      ]
+    },
+    {
+      "id": "ph",
+      "label": "pH (H2O)",
+      "kind": "numeric",
+      "unit": "",
+      "remote": {
+        "available": true,
+        "max": 3,
+        "from": "Carta del pH dei suoli ER, strato 0-30 cm"
+      },
+      "field": true,
+      "rules": [
+        {
+          "gte": 7.2,
+          "points": 3
+        },
+        {
+          "gte": 6.8,
+          "points": 2
+        },
+        {
+          "gte": 5.7,
+          "points": 1
+        },
+        {
+          "points": 0
+        }
+      ]
+    },
+    {
+      "id": "ca_exch",
+      "label": "Ca scambiabile",
+      "kind": "numeric",
+      "unit": "cmol+/kg",
+      "remote": {
+        "available": false,
+        "max": 3,
+        "from": "non disponibile da dati remoti"
+      },
+      "field": true,
+      "fieldNote": "Solo da analisi di laboratorio.",
+      "rules": [
+        {
+          "gte": 30,
+          "lte": 60,
+          "points": 3
+        },
+        {
+          "gt": 60,
+          "points": 2
+        },
+        {
+          "gte": 15,
+          "points": 2
+        },
+        {
+          "gt": 0,
+          "points": 1
+        },
+        {
+          "points": 0
+        }
+      ]
+    },
+    {
+      "id": "caco3",
+      "label": "Carbonati (CaCO3)",
+      "kind": "numeric",
+      "unit": "%",
+      "remote": {
+        "available": true,
+        "max": 3,
+        "from": "carta dei suoli ER, se l'attributo esiste [da verificare]"
+      },
+      "field": true,
+      "rules": [
+        {
+          "gt": 5,
+          "points": 3
+        },
+        {
+          "gte": 1,
+          "points": 2
+        },
+        {
+          "gt": 0,
+          "points": 1
+        },
+        {
+          "points": 0
+        }
+      ],
+      "fizzTest": {
+        "note": "Euristica di campo [da verificare]: reazione all'HCl 10% secondo le classi FAO 2006 (Guidelines for soil description), tradotta in modo prudente sulle soglie VTH. Le classi FAO a cavallo di una soglia VTH prendono il punteggio più basso.",
+        "levels": [
+          {
+            "id": "nessuna",
+            "label": "Nessuna reazione",
+            "faoRange": "~0%",
+            "points": 0
+          },
+          {
+            "id": "udibile",
+            "label": "Solo udibile, non visibile",
+            "faoRange": "~0-2%",
+            "points": 1
+          },
+          {
+            "id": "visibile",
+            "label": "Effervescenza visibile",
+            "faoRange": "~2-10%",
+            "points": 2
+          },
+          {
+            "id": "forte",
+            "label": "Forte, fa schiuma",
+            "faoRange": ">10%",
+            "points": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "cn",
+      "label": "Rapporto C/N",
+      "kind": "excluded",
+      "remote": {
+        "available": false,
+        "max": 3,
+        "from": "non disponibile"
+      },
+      "field": false,
+      "excludedReason": "Soglie incoerenti nel paper (tabella metodo vs tabelle risultati) e dato non disponibile da remoto. Escluso finché non c'è un dato di laboratorio e una soglia decisa."
+    },
+    {
+      "id": "texture",
+      "label": "Tessitura",
+      "kind": "category",
+      "remote": {
+        "available": true,
+        "max": 3,
+        "from": "carta dei suoli ER (attributo tessitura [da verificare])"
+      },
+      "field": true,
+      "categories": [
+        {
+          "id": "franco_argillosa",
+          "label": "Franco-argillosa",
+          "usda": "clay loam",
+          "points": 3
+        },
+        {
+          "id": "franca",
+          "label": "Franca",
+          "usda": "loam",
+          "points": 3
+        },
+        {
+          "id": "franco_sabbioso_argillosa",
+          "label": "Franco-sabbioso-argillosa",
+          "usda": "sandy clay loam",
+          "points": 3
+        },
+        {
+          "id": "argillo_limosa",
+          "label": "Argillo-limosa",
+          "usda": "silty clay",
+          "points": 3
+        },
+        {
+          "id": "franco_argillo_limosa",
+          "label": "Franco-argillo-limosa",
+          "usda": "silty clay loam",
+          "points": 3
+        },
+        {
+          "id": "argillosa",
+          "label": "Argillosa",
+          "usda": "clay",
+          "points": 2
+        },
+        {
+          "id": "franco_sabbiosa",
+          "label": "Franco-sabbiosa",
+          "usda": "sandy loam",
+          "points": 1
+        },
+        {
+          "id": "sabbio_argillosa",
+          "label": "Sabbio-argillosa",
+          "usda": "sandy clay",
+          "points": 1
+        },
+        {
+          "id": "franco_limosa",
+          "label": "Franco-limosa",
+          "usda": "silt loam",
+          "points": 1
+        },
+        {
+          "id": "sabbiosa",
+          "label": "Sabbiosa",
+          "usda": "sand",
+          "points": 0
+        },
+        {
+          "id": "sabbioso_franca",
+          "label": "Sabbioso-franca",
+          "usda": "loamy sand",
+          "points": 0
+        },
+        {
+          "id": "limosa",
+          "label": "Limosa",
+          "usda": "silt",
+          "points": 0
+        }
+      ]
+    },
+    {
+      "id": "elevation",
+      "label": "Quota",
+      "kind": "numeric",
+      "unit": "m slm",
+      "remote": {
+        "available": true,
+        "max": 3,
+        "from": "DTM ER"
+      },
+      "field": true,
+      "fieldNote": "Dal GPS del telefono va bene: le soglie sono a centinaia di metri.",
+      "rules": [
+        {
+          "lt": 600,
+          "points": 3
+        },
+        {
+          "lt": 1000,
+          "points": 2
+        },
+        {
+          "lte": 1600,
+          "points": 1
+        },
+        {
+          "points": 0
+        }
+      ]
+    },
+    {
+      "id": "forest_type",
+      "label": "Tipo di bosco",
+      "kind": "category",
+      "remote": {
+        "available": true,
+        "max": 3,
+        "from": "Carta forestale ER: tipo forestale (COD_TIPO) -> classe, tabella pipeline/lookups/forestale_vth.csv"
+      },
+      "field": true,
+      "categories": [
+        {
+          "id": "termofile",
+          "label": "Latifoglie termofile (roverella, carpino nero, cerro)",
+          "points": 3
+        },
+        {
+          "id": "mesofile",
+          "label": "Latifoglie mesofile (faggio, farnia, aceri e frassini)",
+          "points": 2
+        },
+        {
+          "id": "umidi",
+          "label": "Umidi e ripariali (ontani, salici, pioppi)",
+          "points": 1
+        },
+        {
+          "id": "altri",
+          "label": "Altri (rimboschimenti di conifere, robinia, boscaglie)",
+          "points": 0
+        }
+      ],
+      "note": "Classi appenniniche (vth-v2), non quelle polacche del paper: VTH premiava le latifoglie fresche, in Appennino l'aestivum sta soprattutto nei boschi termofili su calcare (Moser et al. 2017). Ipotesi da verificare."
+    },
+    {
+      "id": "forest_structure",
+      "label": "Struttura del bosco",
+      "kind": "category",
+      "remote": {
+        "available": false,
+        "max": 3,
+        "from": "solo campo"
+      },
+      "field": true,
+      "categories": [
+        {
+          "id": "aperta",
+          "label": "Copertura aperta, radure, sentieri",
+          "points": 3
+        },
+        {
+          "id": "moderata",
+          "label": "Copertura moderata",
+          "points": 2
+        },
+        {
+          "id": "chiusa_arbusti",
+          "label": "Chiusa, con qualche arbusto",
+          "points": 1
+        },
+        {
+          "id": "chiusa_fitta",
+          "label": "Chiusa, sottobosco fitto",
+          "points": 0
+        }
+      ]
+    },
+    {
+      "id": "hosts",
+      "label": "Piante ospiti",
+      "kind": "hosts",
+      "remote": {
+        "available": false,
+        "max": 1,
+        "from": "Escluso dallo score remoto in vth-v2: da carta forestale vale 1 quasi ovunque. Si valuta sul posto."
+      },
+      "field": true,
+      "scoring": [
+        {
+          "points": 3,
+          "rule": "più di 2 specie ospiti nello strato arboreo e nocciolo presente"
+        },
+        {
+          "points": 2,
+          "rule": "almeno 1 specie ospite arborea e almeno 1 nel piano inferiore"
+        },
+        {
+          "points": 1,
+          "rule": "almeno 1 specie ospite"
+        },
+        {
+          "points": 0,
+          "rule": "nessuna specie ospite"
+        }
+      ]
+    },
+    {
+      "id": "orchids",
+      "label": "Orchidee indicatrici",
+      "kind": "orchids",
+      "remote": {
+        "available": false,
+        "max": 3,
+        "from": "solo campo"
+      },
+      "field": true,
+      "genera": [
+        "Cephalanthera",
+        "Epipactis",
+        "Cypripedium"
+      ],
+      "scoring": [
+        {
+          "points": 3,
+          "rule": "più di 1 specie"
+        },
+        {
+          "points": 2,
+          "rule": "1 specie"
+        },
+        {
+          "points": 0,
+          "rule": "nessuna"
+        }
+      ]
+    },
+    {
+      "id": "insects",
+      "label": "Insetti indicatori",
+      "kind": "insects",
+      "remote": {
+        "available": false,
+        "max": 3,
+        "from": "solo campo"
+      },
+      "field": true,
+      "taxa": [
+        "Leiodes",
+        "Bolbelasmus unicornis",
+        "Odonteus armiger",
+        "Suillia (mosche)"
+      ],
+      "scoring": [
+        {
+          "points": 3,
+          "rule": "almeno uno presente"
+        },
+        {
+          "points": 0,
+          "rule": "nessuno"
+        }
+      ]
+    }
+  ],
+  "hostSpecies": [
+    {
+      "id": "fagus",
+      "latin": "Fagus sylvatica",
+      "it": "Faggio"
+    },
+    {
+      "id": "carpinus_betulus",
+      "latin": "Carpinus betulus",
+      "it": "Carpino bianco"
+    },
+    {
+      "id": "ostrya",
+      "latin": "Ostrya carpinifolia",
+      "it": "Carpino nero",
+      "note": "Aggiunto per l'Appennino (Moser et al. 2017), non nella lista polacca."
+    },
+    {
+      "id": "corylus",
+      "latin": "Corylus avellana",
+      "it": "Nocciolo",
+      "hazel": true
+    },
+    {
+      "id": "quercus_pubescens",
+      "latin": "Quercus pubescens",
+      "it": "Roverella",
+      "group": "Quercus spp."
+    },
+    {
+      "id": "quercus_cerris",
+      "latin": "Quercus cerris",
+      "it": "Cerro",
+      "group": "Quercus spp."
+    },
+    {
+      "id": "quercus_other",
+      "latin": "Quercus spp. (altre)",
+      "it": "Altre querce",
+      "group": "Quercus spp."
+    },
+    {
+      "id": "betula",
+      "latin": "Betula spp.",
+      "it": "Betulla"
+    },
+    {
+      "id": "populus",
+      "latin": "Populus spp.",
+      "it": "Pioppo"
+    },
+    {
+      "id": "tilia",
+      "latin": "Tilia spp.",
+      "it": "Tiglio"
+    },
+    {
+      "id": "ulmus",
+      "latin": "Ulmus spp.",
+      "it": "Olmo"
+    },
+    {
+      "id": "abies_alba",
+      "latin": "Abies alba",
+      "it": "Abete bianco"
+    },
+    {
+      "id": "picea_abies",
+      "latin": "Picea abies",
+      "it": "Abete rosso"
+    },
+    {
+      "id": "pinus_nigra",
+      "latin": "Pinus nigra",
+      "it": "Pino nero"
+    },
+    {
+      "id": "pinus_sylvestris",
+      "latin": "Pinus sylvestris",
+      "it": "Pino silvestre"
+    }
+  ],
+  "tiles": {
+    "note": "Contratto tra pipeline ed app per il PMTiles vettoriale dello score remoto.",
+    "layer": "vth",
+    "properties": {
+      "score": "float 0..1, arrotondato a 3 decimali per eccesso a metà (0.3125 -> 0.313). Assente se i parametri disponibili sono meno di remote.minParams. 0 e 1 possono arrivare come interi: non controllare il tipo.",
+      "pts": "int, somma dei punti dei parametri remoti disponibili",
+      "max": "int, somma dei massimi remoti dei parametri disponibili",
+      "n": "int, numero di parametri remoti disponibili",
+      "bedrock": "int 0..3, assente se non disponibile",
+      "ph": "int 0..3, assente se non disponibile",
+      "caco3": "int 0..3, assente se non disponibile",
+      "texture": "int 0..3, assente se non disponibile",
+      "elevation": "int 0..3, assente se non disponibile",
+      "forest_type": "int 0..3, assente se non disponibile"
+    },
+    "metadata": "Nel metadata JSON del PMTiles: model (id del modello), built (ISO 8601), aoi (stringa), sources (lista di {id, status, verified, params}). Chiavi in più ammesse: mask, cell_size_m, generator, warning, synthetic (true = dati di test)."
+  },
+  "derivedFrom": "vth-v1",
+  "changes": [
+    "Ospiti fuori dallo score remoto: in Val Baganza valevano 1 sul 99,5% del bosco e non distinguevano nulla. Restano nella checklist sul posto (decisione di Danny, 20/10/2026).",
+    "Tipo di bosco con classi appenniniche al posto di quelle polacche: latifoglie termofile 3, mesofile 2, umidi 1, altri 0. Ipotesi basata su Moser et al. 2017 (aestivum legato a clima caldo-secco, suolo alcalino, chioma aperta), da verificare in calibrazione (decisione di Danny, 20/10/2026)."
+  ]
+}

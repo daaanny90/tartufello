@@ -55,12 +55,6 @@ export function matchRule(value: number, rules: NumericRule[]): number {
   throw new Error(`Nessuna regola per il valore ${value}`)
 }
 
-export function categoryPoints(id: ParamId, categoryId: string): number {
-  const c = param(id).categories?.find((x) => x.id === categoryId)
-  if (!c) throw new Error(`Categoria sconosciuta per ${id}: ${categoryId}`)
-  return c.points
-}
-
 const HAZEL = new Set(model.hostSpecies.filter((h) => h.hazel).map((h) => h.id))
 
 /**
@@ -96,12 +90,17 @@ export function fizzPoints(levelId: string): number {
 
 type FieldResult = { points: number; detail: string } | null
 
+function categoryResult(id: ParamId, categoryId: string | undefined): FieldResult {
+  if (!categoryId) return null
+  const c = param(id).categories?.find((x) => x.id === categoryId)
+  return c ? { points: c.points, detail: c.label } : null
+}
+
 function fieldValue(id: ParamId, f: FieldInputs): FieldResult {
   const p = param(id)
-  const label = (cat?: string) => p.categories?.find((c) => c.id === cat)?.label ?? cat ?? ''
   switch (id) {
     case 'bedrock':
-      return f.bedrock ? { points: categoryPoints(id, f.bedrock), detail: label(f.bedrock) } : null
+      return categoryResult(id, f.bedrock)
     case 'ph':
       return f.ph !== undefined ? { points: matchRule(f.ph, p.rules!), detail: `pH ${f.ph}` } : null
     case 'ca_exch':
@@ -114,15 +113,15 @@ function fieldValue(id: ParamId, f: FieldInputs): FieldResult {
       }
       return null
     case 'texture':
-      return f.texture ? { points: categoryPoints(id, f.texture), detail: label(f.texture) } : null
+      return categoryResult(id, f.texture)
     case 'elevation':
       return f.elevation !== undefined
         ? { points: matchRule(f.elevation, p.rules!), detail: `${Math.round(f.elevation)} m` }
         : null
     case 'forest_type':
-      return f.forestType ? { points: categoryPoints(id, f.forestType), detail: label(f.forestType) } : null
+      return categoryResult(id, f.forestType)
     case 'forest_structure':
-      return f.forestStructure ? { points: categoryPoints(id, f.forestStructure), detail: label(f.forestStructure) } : null
+      return categoryResult(id, f.forestStructure)
     case 'hosts':
       return f.hosts
         ? { points: hostsPoints(f.hosts), detail: `${f.hosts.tree.length} arboree, ${f.hosts.lower.length} nel piano inferiore` }

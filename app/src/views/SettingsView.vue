@@ -5,6 +5,7 @@ import { backupFileName, download, exportEncrypted, importEncrypted } from '../b
 import type { FileKey } from '../diary/db'
 import { model } from '../field/model'
 import { downloadMapFile, formatBytes, importMapFile, mapFiles, removeMapFile } from '../map/mapFiles'
+import { fetchPublishedMaps, publishedUrl, type PublishedMap } from '../map/published'
 import { calendar } from '../rules/calendar'
 import { settings } from '../settings/settings'
 
@@ -22,7 +23,19 @@ async function refreshStorage() {
   if (est?.usage !== undefined) usage.value = `${formatBytes(est.usage)} usati${est.quota ? ` su ${formatBytes(est.quota)}` : ''}`
 }
 
-onMounted(refreshStorage)
+const published = ref<PublishedMap[]>([])
+
+onMounted(async () => {
+  await refreshStorage()
+  published.value = await fetchPublishedMaps()
+})
+
+function fromPublished(m: PublishedMap) {
+  void run('score', async () => {
+    const info = await downloadMapFile('score', new URL(publishedUrl(m.file), location.href).href)
+    return `Scaricata ${m.title} (${formatBytes(info.size)}).`
+  })
+}
 
 async function persist() {
   persisted.value = (await navigator.storage?.persist?.()) ?? false
@@ -139,6 +152,15 @@ function doImport() {
         <button class="danger" @click="removeMapFile('score')">Rimuovi</button>
       </template>
       <p v-else class="small muted">Nessuna. Il file `.pmtiles` lo genera la pipeline (cartella pipeline/ del repo).</p>
+      <div v-if="published.length" class="stack" style="margin-top: 10px">
+        <div v-for="m in published" :key="m.file" class="row spread" style="flex-wrap: nowrap">
+          <div>
+            <strong>{{ m.title }}</strong>
+            <div class="small muted">{{ formatBytes(m.size) }} · modello {{ m.model }} · {{ m.built.slice(0, 10) }}{{ m.warning ? ' · in bozza' : '' }}</div>
+          </div>
+          <button class="primary" :disabled="busy === 'score'" @click="fromPublished(m)">Scarica</button>
+        </div>
+      </div>
       <label class="field" style="margin-top: 10px">
         <span>Importa file PMTiles</span>
         <input type="file" accept=".pmtiles" data-testid="score-file" :disabled="busy === 'score'" @change="onMapFile('score', $event)" />

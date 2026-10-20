@@ -1,4 +1,4 @@
-import modelData from '@model/vth-v1.json'
+import modelData from '@model/vth-v2.json'
 
 export interface NumericRule {
   gt?: number

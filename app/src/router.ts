@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import TodayView from './views/TodayView.vue'
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'oggi', component: TodayView },
     { path: '/mappa', name: 'mappa', component: () => import('./views/MapView.vue') },

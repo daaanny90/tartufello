@@ -11,13 +11,34 @@ const shots = process.env.SCREENSHOTS ?? fileURLToPath(new URL('./screenshots', 
 mkdirSync(shots, { recursive: true })
 
 const PORT = 4173
-const BASE = `http://localhost:${PORT}`
-const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { cwd: root, stdio: 'ignore' })
+// FIUTO_BASE=/tartufello/ per provare il build come su GitHub Pages.
+const BASE = `http://localhost:${PORT}${(process.env.FIUTO_BASE ?? '/').replace(/\/$/, '')}`
+// Se la porta risponde già, c'è un server vecchio: meglio fermarsi che testare il build sbagliato.
+try {
+  await fetch(`http://localhost:${PORT}/`)
+  console.error(`porta ${PORT} già occupata: chiudi il vite preview rimasto aperto`)
+  process.exit(1)
+} catch {
+  /* porta libera */
+}
+// detached: si chiude tutto il gruppo di processi alla fine, non solo il primo.
+const server = spawn(`${root}/node_modules/.bin/vite`, ['preview', '--port', String(PORT), '--strictPort'], {
+  cwd: root,
+  stdio: 'ignore',
+  detached: true,
+})
+const stopServer = () => {
+  try {
+    process.kill(-server.pid)
+  } catch {
+    /* già chiuso */
+  }
+}
 
 async function waitForServer() {
   for (let i = 0; i < 50; i++) {
     try {
-      if ((await fetch(BASE)).ok) return
+      if ((await fetch(`${BASE}/`)).ok) return
     } catch {
       /* non ancora su */
     }
@@ -59,7 +80,7 @@ try {
   const shot = (name) => page.screenshot({ path: `${shots}/${name}.png` })
 
   step = 'oggi'
-  await page.goto(BASE)
+  await page.goto(`${BASE}/`)
   await page.getByText('Tartufo nero (T. aestivum / uncinatum)').waitFor()
   await shot('01-oggi')
 
@@ -92,7 +113,7 @@ try {
   step = 'campo'
   await page.locator('[data-testid=summary]').waitFor()
   await page.getByRole('button', { name: /Copertura aperta/ }).click()
-  await page.getByRole('button', { name: /Latifoglie fresche/ }).click()
+  await page.getByRole('button', { name: /Latifoglie termofile/ }).click()
   await page.locator('tr', { hasText: 'Carpino nero' }).locator('input').first().check()
   await page.locator('tr', { hasText: 'Roverella' }).locator('input').first().check()
   await page.locator('tr', { hasText: 'Nocciolo' }).locator('input').nth(1).check()
@@ -107,7 +128,7 @@ try {
   await shot('06-spot')
 
   step = 'uscita'
-  await page.goto(BASE)
+  await page.goto(`${BASE}/`)
   await page.getByRole('button', { name: 'Inizia uscita' }).click()
   await page.getByText('Uscita in corso').first().waitFor()
   for (let i = 1; i <= 6; i++) {
@@ -152,5 +173,5 @@ try {
   process.exitCode = 1
 } finally {
   await browser?.close()
-  server.kill()
+  stopServer()
 }

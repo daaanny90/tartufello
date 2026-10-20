@@ -67,7 +67,7 @@ describe('valutazione combinata', () => {
       caco3Pct: 12,
       texture: 'franca',
       elevation: 450,
-      forestType: 'latifoglie_fresche',
+      forestType: 'termofile',
       forestStructure: 'aperta',
       hosts: { tree: ['fagus', 'ostrya', 'quercus_pubescens'], lower: ['corylus'] },
       orchids: { genera: ['Cephalanthera', 'Epipactis'], speciesCount: 2 },
@@ -81,16 +81,20 @@ describe('valutazione combinata', () => {
     expect(a.params.find((p) => p.id === 'cn')?.origin).toBe('escluso')
   })
 
-  it('il campo vince sulla mappa e gli ospiti da mappa pesano al massimo 1', () => {
+  it('il campo vince sulla mappa; gli ospiti in v2 non arrivano dalla mappa', () => {
     const a = assess({ ph: 6.0 }, { ph: 3, elevation: 3, hosts: 1 })
     const ph = a.params.find((p) => p.id === 'ph')!
     expect(ph.origin).toBe('campo')
     expect(ph.points).toBe(1)
-    const hosts = a.params.find((p) => p.id === 'hosts')!
-    expect(hosts.origin).toBe('mappa')
-    expect(hosts.max).toBe(1)
-    expect(a.pts).toBe(1 + 3 + 1)
-    expect(a.max).toBe(3 + 3 + 1)
+    expect(a.params.find((p) => p.id === 'hosts')!.origin).toBe('mancante')
+    expect(a.pts).toBe(1 + 3)
+    expect(a.max).toBe(3 + 3)
+  })
+
+  it('una categoria di un modello precedente vale come non valutata', () => {
+    const a = assess({ forestType: 'latifoglie_fresche', forestStructure: 'aperta' })
+    expect(a.params.find((p) => p.id === 'forest_type')!.origin).toBe('mancante')
+    expect(a.params.find((p) => p.id === 'forest_structure')!.points).toBe(3)
   })
 
   it('senza dati non c’è punteggio', () => {
@@ -119,7 +123,7 @@ describe('classi', () => {
 
 describe('classe provvisoria', () => {
   it('con pochi parametri la classe è provvisoria', () => {
-    const few = assess({ forestStructure: 'aperta', forestType: 'latifoglie_fresche', ph: 7.6 })
+    const few = assess({ forestStructure: 'aperta', forestType: 'termofile', ph: 7.6 })
     expect(few.vthClass?.id).toBe('alta')
     expect(few.provisional).toBe(true)
   })
@@ -127,10 +131,10 @@ describe('classe provvisoria', () => {
   it('con campo più mappa smette di esserlo', () => {
     const full = assess(
       { forestStructure: 'aperta', orchids: { genera: [], speciesCount: 0 }, insects: [] },
-      { bedrock: 3, ph: 3, caco3: 2, texture: 3, elevation: 3, forest_type: 2, hosts: 1 },
+      { bedrock: 3, ph: 3, caco3: 2, texture: 3, elevation: 3, forest_type: 2 },
     )
     expect(full.provisional).toBe(false)
-    expect(full.estimated).toBe(7)
+    expect(full.estimated).toBe(6)
     expect(full.observed).toBe(3)
   })
 })

@@ -6,7 +6,8 @@ import { sourceUrl } from './mapFiles'
 
 export const FONT = ['Noto Sans Regular']
 
-const origin = () => (typeof location !== 'undefined' ? location.origin : '')
+/** URL assoluto degli asset in public/, anche quando l'app sta in una sottocartella. */
+const assets = () => (typeof location !== 'undefined' ? location.origin : '') + import.meta.env.BASE_URL
 
 const RASTER: Record<Exclude<BasemapId, 'offline'>, { tiles: string[]; maxzoom: number; attribution: string }> = {
   opentopomap: {
@@ -26,12 +27,12 @@ const RASTER: Record<Exclude<BasemapId, 'offline'>, { tiles: string[]; maxzoom: 
 export function baseStyle(basemap: BasemapId, offlineReady: boolean): StyleSpecification {
   const common = {
     version: 8 as const,
-    glyphs: `${origin()}/basemap/fonts/{fontstack}/{range}.pbf`,
+    glyphs: `${assets()}basemap/fonts/{fontstack}/{range}.pbf`,
   }
   if (basemap === 'offline' && offlineReady) {
     return {
       ...common,
-      sprite: `${origin()}/basemap/sprites/light`,
+      sprite: `${assets()}basemap/sprites/light`,
       sources: {
         protomaps: {
           type: 'vector',
