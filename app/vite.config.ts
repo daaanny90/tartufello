@@ -1,4 +1,6 @@
 /// <reference types="vitest/config" />
+import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -6,6 +8,20 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // Percorso di pubblicazione: "/" in locale, "/<repo>/" su GitHub Pages (lo imposta il workflow).
 const base = process.env.FIUTO_BASE ?? '/'
+
+/** Versione mostrata in Altro: serve per capire cosa c'è sul telefono quando si segnala un problema. */
+function appVersion(): string {
+  const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
+  let sha = process.env.GITHUB_SHA?.slice(0, 7) ?? ''
+  if (!sha) {
+    try {
+      sha = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+    } catch {
+      sha = 'locale'
+    }
+  }
+  return `${pkg.version} · ${sha} · ${new Date().toISOString().slice(0, 10)}`
+}
 
 const tileCache = (name: string, urlPattern: RegExp) => ({
   urlPattern,
@@ -20,6 +36,9 @@ const tileCache = (name: string, urlPattern: RegExp) => ({
 
 export default defineConfig({
   base,
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion()),
+  },
   plugins: [
     vue(),
     VitePWA({

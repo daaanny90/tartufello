@@ -10,11 +10,11 @@ import { db, newId, nowIso, type Find, type Spot } from '../diary/db'
 import { tracking } from '../diary/outings'
 import { model, param, REMOTE_PARAMS, type ParamId } from '../field/model'
 import { remoteClass } from '../field/vth'
-import { acquireLocation, location } from '../lib/geolocation'
-import { circle, formatCoord } from '../lib/geo'
+import { acquireLocation, averagedFix, location } from '../lib/geolocation'
+import { bearing, circle, compass, distance, formatCoord, formatDistance } from '../lib/geo'
 import { plain } from '../lib/plain'
-import { mapFiles, protocol, sourceUrl } from '../map/mapFiles'
-import { toRemote, type RemoteAt } from '../map/remote'
+import { mapFiles, pmtiles, protocol, sourceUrl } from '../map/mapFiles'
+import { remoteAt, toRemote, type RemoteAt } from '../map/remote'
 import { baseStyle, FONT, scoreLayers, type ScoreView } from '../map/style'
 import { settings } from '../settings/settings'
 
@@ -43,12 +43,20 @@ const ui = reactive({
   follow: false,
   view: { kind: 'score' } as ScoreView,
   newSpotName: '',
+  /** Letture GPS in corso per "spot qui". */
+  fixing: null as null | { count: number; acc: number | null },
+  fixError: '',
 })
+
+/** Secondi di letture per fissare uno spot sotto gli alberi. */
+const FIX_SECONDS = 8
 
 interface Selection {
   lngLat: [number, number]
   remote: RemoteAt | null
   spot: Spot | null
+  /** Precisione in metri, se il punto viene dal GPS. */
+  acc?: number
 }
 const selection = ref<Selection | null>(null)
 
@@ -65,6 +73,37 @@ const metaText = (k: string) => {
 const scoreWarning = computed(() => metaText('warning'))
 const notesOpen = ref(false)
 const offlineMissing = computed(() => settings.basemap === 'offline' && !mapFiles.basemap)
+
+/** Distanza e direzione dalla mia posizione al punto selezionato: per tornare a uno spot. */
+const nav = computed(() => {
+  const f = location.fix
+  const sel = selection.value
+  if (!f || !sel) return null
+  const here: [number, number] = [f.lon, f.lat]
+  const d = distance(here, sel.lngLat)
+  const b = bearing(here, sel.lngLat)
+  return { d, b, label: compass(b), acc: f.acc }
+})
+
+async function spotHere() {
+  ui.fixError = ''
+  ui.fixing = { count: 0, acc: null }
+  try {
+    const f = await averagedFix(FIX_SECONDS * 1000, (count, avg) => {
+      ui.fixing = { count, acc: avg?.acc ?? null }
+    })
+    const lngLat: [number, number] = [f.lon, f.lat]
+    map.value?.easeTo({ center: lngLat, zoom: Math.max(map.value.getZoom(), 16) })
+    const pm = pmtiles('score')
+    const remote = pm ? await remoteAt(pm, f.lon, f.lat).catch(() => null) : null
+    selection.value = { lngLat, remote, spot: null, acc: Math.round(f.acc) }
+    ui.newSpotName = ''
+  } catch (e) {
+    ui.fixError = (e as Error).message
+  } finally {
+    ui.fixing = null
+  }
+}
 
 const paramOptions = computed(() =>
   REMOTE_PARAMS.map((id) => ({ id, label: param(id).label, max: param(id).remote.max })),
@@ -235,7 +274,11 @@ onMounted(() => {
     center: view.center,
     zoom: view.zoom,
     attributionControl: { compact: true },
+    // Nord sempre in alto: la freccia verso lo spot resta leggibile.
+    dragRotate: false,
+    pitchWithRotate: false,
   })
+  m.touchZoomRotate.disableRotation()
   m.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left')
   m.on('style.load', () => addOverlays(m))
   // L'attribuzione compatta parte aperta e copre mezza mappa sul telefono: la chiudo, resta il pulsante (i).
@@ -270,8 +313,12 @@ onMounted(() => {
   )
 })
 
-/** /mappa?lon=..&lat=..&z=.. centra la mappa (es. da uno spot). */
-function applyQuery() {
+/** /mappa?lon=..&lat=..&z=.. centra la mappa; con &spot=id apre lo spot (per tornarci). */
+async function applyQuery() {
+  if (typeof route.query.spot === 'string') {
+    const s = await db.spots.get(route.query.spot)
+    if (s && s.geom.type === 'Point') selection.value = { lngLat: s.geom.coordinates as [number, number], remote: s.remote ? plain(s.remote) : null, spot: s }
+  }
   const lon = Number(route.query.lon)
   const lat = Number(route.query.lat)
   if (!route.query.lon || !route.query.lat || !Number.isFinite(lon) || !Number.isFinite(lat)) return
@@ -279,12 +326,12 @@ function applyQuery() {
   map.value?.jumpTo({ center: [lon, lat], zoom: Number(route.query.z) || 15 })
 }
 
-watch(() => route.query, () => route.name === 'mappa' && applyQuery())
+watch(() => route.query, () => route.name === 'mappa' && void applyQuery())
 
 onActivated(() => {
   releaseGps = acquireLocation()
   map.value?.resize()
-  applyQuery()
+  void applyQuery()
 })
 
 onDeactivated(() => {
@@ -359,11 +406,18 @@ const legend = computed(() => {
       </div>
       <div v-if="offlineMissing" class="banner warn small">Basemap offline non importata: uso OpenTopoMap online.</div>
       <div v-if="location.error" class="banner warn small">{{ location.error }}</div>
+      <div v-if="ui.fixing" class="banner ok small" data-testid="fixing">
+        Fermo qui qualche secondo: fisso la posizione ({{ ui.fixing.count }} letture<template v-if="ui.fixing.acc !== null">, ±{{ Math.round(ui.fixing.acc) }} m</template>)…
+      </div>
+      <div v-if="ui.fixError" class="banner bad small">{{ ui.fixError }}</div>
     </div>
 
     <div class="controls">
       <button class="ctl" :class="{ on: ui.follow }" aria-label="Centra sulla mia posizione" @click="locate">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+      </button>
+      <button class="ctl" aria-label="Spot qui dove sono" :disabled="!!ui.fixing" @click="spotHere">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z" /><path d="M12 7v6M9 10h6" /></svg>
       </button>
       <button class="ctl" :class="{ on: ui.layersOpen }" aria-label="Livelli" @click="ui.layersOpen = !ui.layersOpen">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 9 5-9 5-9-5 9-5zM3 13l9 5 9-5" /></svg>
@@ -398,7 +452,14 @@ const legend = computed(() => {
         <strong>{{ selection.spot ? selection.spot.name : 'Punto selezionato' }}</strong>
         <button class="ghost" aria-label="Chiudi" @click="selection = null">✕</button>
       </div>
-      <div class="small muted">{{ formatCoord(selection.lngLat) }}</div>
+      <div class="small muted">
+        {{ formatCoord(selection.lngLat) }}<template v-if="selection.acc !== undefined"> · GPS ±{{ selection.acc }} m</template>
+      </div>
+      <div v-if="nav && nav.d > 3" class="nav" data-testid="nav">
+        <span class="arrow" :style="{ transform: `rotate(${nav.b}deg)` }">↑</span>
+        <span><strong>{{ formatDistance(nav.d) }}</strong> verso {{ nav.label }} ({{ Math.round(nav.b) }}°)</span>
+        <span class="small muted">GPS ±{{ Math.round(nav.acc) }} m</span>
+      </div>
       <div v-if="selection.spot?.kind === 'riservato'" class="banner bad small" style="margin: 8px 0">Tartufaia riservata: off-limits.</div>
 
       <template v-if="selection.remote">
@@ -503,6 +564,24 @@ const legend = computed(() => {
 
 .layers {
   top: 120px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.arrow {
+  display: inline-block;
+  font-size: 1.4rem;
+  line-height: 1;
+  font-weight: 700;
+  color: #1e88e5;
 }
 
 .sheet {

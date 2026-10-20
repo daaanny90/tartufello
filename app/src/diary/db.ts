@@ -45,9 +45,13 @@ export interface TrackPoint {
   alt?: number | null
 }
 
+export type OutingKind = 'cerca' | 'sopralluogo'
+
 /** Anche i giri a vuoto: sono dati. */
 export interface Outing {
   id: string
+  /** 'sopralluogo' = giro senza cane per valutare posti; assente nei dati vecchi = 'cerca'. */
+  kind?: OutingKind
   date: string
   endedAt?: string
   dog: string

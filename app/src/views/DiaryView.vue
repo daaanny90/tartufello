@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { db, type FieldAssessment, type Find, type Outing, type Spot } from '../diary/db'
 import { startOuting, tracking } from '../diary/outings'
+import { outingLabel } from '../lib/storage'
 import { model } from '../field/model'
 import { remoteClass } from '../field/vth'
 import { formatDistance, formatDuration, trackLength } from '../lib/geo'
@@ -66,12 +67,12 @@ async function newOuting() {
         <li v-for="o in outings" :key="o.id">
           <RouterLink :to="`/diario/uscita/${o.id}`">
             <div class="row spread">
-              <strong>{{ formatDate(new Date(o.date)) }}</strong>
+              <strong>{{ formatDate(new Date(o.date)) }}<span v-if="o.kind === 'sopralluogo'" class="muted small"> · {{ outingLabel(o.kind) }}</span></strong>
               <span
                 class="pill"
                 :class="!o.endedAt ? 'warn' : findsBy.get(o.id)?.length ? 'ok' : 'neutral'"
               >
-                {{ !o.endedAt ? 'in corso' : findsBy.get(o.id)?.length ? `${findsBy.get(o.id)!.length} trovati` : 'giro a vuoto' }}
+                {{ !o.endedAt ? 'in corso' : findsBy.get(o.id)?.length ? `${findsBy.get(o.id)!.length} trovati` : o.kind === 'sopralluogo' ? `${o.spotsVisited.length} spot` : 'giro a vuoto' }}
               </span>
             </div>
             <div class="small muted">

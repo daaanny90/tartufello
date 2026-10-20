@@ -10,6 +10,8 @@ export interface Settings {
   basemap: BasemapId
   licenseNumber: string
   wakeLock: boolean
+  /** ISO dell'ultimo backup esportato, '' se mai. */
+  lastBackupAt: string
 }
 
 const DEFAULTS: Settings = {
@@ -18,6 +20,7 @@ const DEFAULTS: Settings = {
   basemap: 'opentopomap',
   licenseNumber: '',
   wakeLock: true,
+  lastBackupAt: '',
 }
 
 export const settings = reactive<Settings>({ ...DEFAULTS })

@@ -95,3 +95,53 @@ export function currentFix(maxAgeMs = 15000): Promise<Fix> {
     )
   })
 }
+
+/**
+ * Media pesata (1/precisione²) di più letture: sotto le chiome il GPS balla,
+ * qualche secondo di letture ferme dà un punto molto più affidabile.
+ */
+export function averageFixes(fixes: Fix[]): Fix | null {
+  if (!fixes.length) return null
+  let wSum = 0
+  let lon = 0
+  let lat = 0
+  let altW = 0
+  let alt = 0
+  for (const f of fixes) {
+    const w = 1 / Math.max(f.acc, 1) ** 2
+    wSum += w
+    lon += f.lon * w
+    lat += f.lat * w
+    if (f.alt !== null) {
+      alt += f.alt * w
+      altW += w
+    }
+  }
+  return {
+    lon: lon / wSum,
+    lat: lat / wSum,
+    // Le letture non sono indipendenti: non scendo sotto la migliore singola.
+    acc: Math.max(1 / Math.sqrt(wSum), Math.min(...fixes.map((f) => f.acc)) / 2),
+    alt: altW ? alt / altW : null,
+    t: fixes[fixes.length - 1].t,
+  }
+}
+
+/** Raccoglie letture per `ms` millisecondi e ne restituisce la media. */
+export function averagedFix(ms: number, onProgress?: (count: number, best: Fix | null) => void): Promise<Fix> {
+  return new Promise((resolve, reject) => {
+    // Da fermi il GPS può non mandare letture nuove: parto dall'ultima, se è fresca.
+    const fixes: Fix[] = state.fix && Date.now() - state.fix.t < 10_000 ? [{ ...state.fix }] : []
+    if (fixes.length) onProgress?.(fixes.length, averageFixes(fixes))
+    const release = acquireLocation((f) => {
+      fixes.push(f)
+      onProgress?.(fixes.length, averageFixes(fixes))
+    })
+    setTimeout(() => {
+      release()
+      const avg = averageFixes(fixes)
+      if (avg) resolve(avg)
+      else reject(new Error(state.error ?? 'Nessuna posizione dal GPS.'))
+    }, ms)
+  })
+}

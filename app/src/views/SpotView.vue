@@ -75,7 +75,7 @@ async function remove() {
       </div>
       <div class="row" style="margin-top: 12px">
         <RouterLink class="btn primary" :to="{ path: '/campo', query: { spot: spot.id } }">Nuova valutazione</RouterLink>
-        <RouterLink v-if="coords" class="btn" :to="{ path: '/mappa', query: { lon: coords[0], lat: coords[1], z: 15 } }">Sulla mappa</RouterLink>
+        <RouterLink v-if="coords" class="btn" :to="{ path: '/mappa', query: { spot: spot.id, lon: coords[0], lat: coords[1], z: 16 } }">Portami qui</RouterLink>
       </div>
     </section>
 

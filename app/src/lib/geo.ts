@@ -44,6 +44,21 @@ export function circle(center: [number, number], radiusM: number, steps = 48): [
   return ring
 }
 
+/** Direzione in gradi (0 = nord, senso orario) da a verso b. */
+export function bearing(a: [number, number], b: [number, number]): number {
+  const toRad = (x: number) => (x * Math.PI) / 180
+  const dLon = toRad(b[0] - a[0])
+  const y = Math.sin(dLon) * Math.cos(toRad(b[1]))
+  const x = Math.cos(toRad(a[1])) * Math.sin(toRad(b[1])) - Math.sin(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.cos(dLon)
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360
+}
+
+const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO']
+
+export function compass(deg: number): string {
+  return COMPASS[Math.round(deg / 45) % 8]
+}
+
 export function formatDistance(m: number): string {
   return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`
 }

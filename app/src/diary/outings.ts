@@ -2,7 +2,8 @@ import { reactive } from 'vue'
 import { acquireLocation, type Fix } from '../lib/geolocation'
 import { distance, minDistanceToTrack } from '../lib/geo'
 import { settings } from '../settings/settings'
-import { db, newId, nowIso, type Outing, type TrackPoint } from './db'
+import { ensurePersisted } from '../lib/storage'
+import { db, newId, nowIso, type Outing, type OutingKind, type TrackPoint } from './db'
 
 /** Sotto questa precisione il punto non entra nella traccia. */
 const MAX_ACCURACY_M = 50
@@ -85,13 +86,21 @@ export async function resumeOuting(): Promise<void> {
   if (o && !tracking.outingId) startRecording(o)
 }
 
-export async function startOuting(): Promise<Outing> {
+export async function startOuting(kind: OutingKind = 'cerca'): Promise<Outing> {
   const existing = await activeOuting()
   if (existing) {
     startRecording(existing)
     return existing
   }
-  const outing: Outing = { id: newId(), date: nowIso(), dog: settings.dog, track: [], spotsVisited: [] }
+  void ensurePersisted()
+  const outing: Outing = {
+    id: newId(),
+    kind,
+    date: nowIso(),
+    dog: kind === 'sopralluogo' ? '' : settings.dog,
+    track: [],
+    spotsVisited: [],
+  }
   await db.outings.add(outing)
   startRecording(outing)
   return outing

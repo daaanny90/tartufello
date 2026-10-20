@@ -5,6 +5,8 @@ import { db, type Outing } from '../diary/db'
 import { startOuting, tracking } from '../diary/outings'
 import { calendar, dayStatus, faunaClosureOn, formatDate, formatMmdd, searchWindow, seasonLabel, targetStatus } from '../rules/calendar'
 import { settings } from '../settings/settings'
+import { backupOverdue } from '../settings/backupReminder'
+import type { OutingKind } from '../diary/db'
 import { formatDistance, trackLength } from '../lib/geo'
 import { location } from '../lib/geolocation'
 import { formatTime, SAFETY_MIN } from '../lib/sun'
@@ -20,12 +22,15 @@ const hours = computed(() => searchWindow(today, position.value))
 const nowAllowed = computed(() => !!hours.value && Date.now() >= hours.value.from.getTime() && Date.now() <= hours.value.to.getTime())
 
 const lastOuting = ref<Outing | null>(null)
+const hasData = ref(false)
+const backupDue = computed(() => backupOverdue(settings.lastBackupAt, hasData.value))
 const seasonFinds = ref(0)
 const totalOutings = ref(0)
 
 onMounted(async () => {
   const outings = await db.outings.orderBy('date').reverse().toArray()
   totalOutings.value = outings.length
+  hasData.value = outings.length + (await db.spots.count()) + (await db.assessments.count()) > 0
   lastOuting.value = outings.find((o) => o.endedAt) ?? null
   const since = new Date(today.getFullYear(), 0, 1).toISOString()
   seasonFinds.value = await db.finds.where('date').aboveOrEqual(since).count()
@@ -34,8 +39,8 @@ onMounted(async () => {
 const dayBefore = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)
 const days = (n: number | null) => (n === null ? '' : n === 1 ? 'domani' : `tra ${n} giorni`)
 
-async function go() {
-  const o = await startOuting()
+async function go(kind: OutingKind) {
+  const o = await startOuting(kind)
   router.push(`/diario/uscita/${o.id}`)
 }
 </script>
@@ -49,6 +54,11 @@ async function go() {
 
     <div v-if="!status.inValidity" class="banner bad">
       Il calendario caricato vale per il {{ calendar.validYears.from }}-{{ calendar.validYears.to }}. Oggi è fuori: controlla la delibera nuova.
+    </div>
+
+    <div v-if="backupDue" class="banner warn small">
+      {{ settings.lastBackupAt ? 'Ultimo backup più di due settimane fa.' : 'Non hai ancora fatto un backup.' }}
+      Se perdi il telefono perdi il diario: <RouterLink to="/impostazioni">fallo da Altro</RouterLink>.
     </div>
 
     <div v-if="status.suspension" class="banner bad">
@@ -76,7 +86,10 @@ async function go() {
         <span class="muted">Un'ora prima dell'alba, un'ora dopo il tramonto ({{ position ? 'posizione GPS' : 'calcolato su Parma' }}, {{ SAFETY_MIN }} minuti di margine).</span>
       </p>
       <div class="row">
-        <button v-if="!tracking.outingId" class="primary" :disabled="!!status.suspension" @click="go">Inizia uscita</button>
+        <template v-if="!tracking.outingId">
+          <button class="primary" :disabled="!!status.suspension" @click="go('cerca')">Inizia uscita</button>
+          <button @click="go('sopralluogo')">Sopralluogo</button>
+        </template>
         <RouterLink v-else class="btn primary" :to="`/diario/uscita/${tracking.outingId}`">Uscita in corso</RouterLink>
         <RouterLink class="btn" to="/campo">Valuta qui</RouterLink>
         <RouterLink class="btn" to="/mappa">Mappa</RouterLink>
@@ -116,6 +129,7 @@ async function go() {
           <RouterLink :to="`/diario/uscita/${lastOuting.id}`">Apri</RouterLink>
         </p>
       </template>
+      <p class="small muted">Sopralluogo: giro senza cane per valutare i posti con la checklist. Si può fare anche quando la ricerca è sospesa.</p>
       <p v-if="!settings.licenseNumber" class="small muted">
         Tesserino non segnato. <RouterLink to="/impostazioni">Aggiungilo</RouterLink> per averlo a portata in bosco.
       </p>

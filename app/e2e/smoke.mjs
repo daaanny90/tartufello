@@ -149,17 +149,47 @@ try {
   await page.getByText('1 trovati').waitFor()
   await shot('08-diario')
 
+  step = 'promemoria backup'
+  await page.goto(`${BASE}/`)
+  await page.getByText('Non hai ancora fatto un backup.').waitFor()
+
+  step = 'spot qui'
+  await page.goto(`${BASE}/mappa`)
+  await page.locator('[data-testid=map] canvas').waitFor()
+  await page.getByRole('button', { name: 'Spot qui dove sono' }).click()
+  await page.locator('[data-testid=fixing]').waitFor()
+  await page.locator('[data-testid=sheet]').getByText(/GPS ±\d+ m/).waitFor({ timeout: 20000 })
+  await page.getByPlaceholder('Nome (facoltativo)').fill('Sotto il cerro')
+  await page.getByRole('button', { name: 'Salva spot' }).click()
+  await page.getByRole('link', { name: 'Apri spot' }).waitFor()
+  // Mi allontano verso sud: la scheda dice quanto e da che parte tornare.
+  await context.setGeolocation({ latitude: 44.6485, longitude: 10.0517, accuracy: 6 })
+  await page.locator('[data-testid=nav]').getByText(/verso (N|NE|E|SE|S|SO|O|NO)/).waitFor()
+  await shot('09-spot-qui')
+
+  step = 'sopralluogo'
+  await page.goto(`${BASE}/`)
+  await page.getByRole('button', { name: 'Sopralluogo' }).click()
+  await page.getByRole('heading', { name: /^Sopralluogo del/ }).waitFor()
+  await page.getByRole('link', { name: 'Valuta qui' }).waitFor()
+  check(!(await page.getByRole('button', { name: 'Ritrovamento' }).count()), 'nel sopralluogo non si registrano ritrovamenti')
+  await page.getByRole('button', { name: 'Termina uscita' }).click()
+  await page.getByText('sopralluogo', { exact: true }).first().waitFor()
+
   step = 'backup'
   await page.goto(`${BASE}/impostazioni`)
+  await page.locator('[data-testid=version]').getByText(/^Versione \d+\.\d+\.\d+ · /).waitFor()
+  await page.getByText('Ultimo backup: mai.').waitFor()
   await page.locator('label', { hasText: 'Passphrase (almeno 8 caratteri)' }).locator('input').fill('lagotto-2027')
   await page.locator('label', { hasText: 'Ripeti' }).locator('input').fill('lagotto-2027')
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Esporta backup' }).click()])
   const file = `${shots}/backup.fiuto`
   await download.saveAs(file)
+  check(!(await page.getByText('Ultimo backup: mai.').count()), 'la data dell\'ultimo backup non si aggiorna')
   await page.locator('label', { hasText: 'File .fiuto' }).locator('input').setInputFiles(file)
   await page.locator('label', { hasText: /^Passphrase$/ }).locator('input').fill('lagotto-2027')
   await page.getByRole('button', { name: 'Ripristina' }).click()
-  await page.getByText(/Importati: 1 uscite, 1 ritrovamenti, 1 spot, 1 valutazioni/).waitFor()
+  await page.getByText(/Importati: 2 uscite, 1 ritrovamenti, 2 spot, 1 valutazioni/).waitFor()
 
   step = 'regole'
   await page.goto(`${BASE}/regole`)

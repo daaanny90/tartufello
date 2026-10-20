@@ -9,6 +9,7 @@ import { fetchPublishedMaps, publishedUrl, type PublishedMap } from '../map/publ
 import { calendar } from '../rules/calendar'
 import { settings } from '../settings/settings'
 
+const appVersion = __APP_VERSION__
 const msg = ref<Record<string, { kind: 'ok' | 'bad'; text: string } | null>>({})
 const busy = ref<string | null>(null)
 const scoreUrl = ref('')
@@ -85,6 +86,7 @@ function doExport() {
     if (pass1.value !== pass2.value) throw new Error('Le due passphrase non coincidono.')
     const blob = await exportEncrypted(pass1.value)
     download(blob, backupFileName())
+    settings.lastBackupAt = new Date().toISOString()
     pass1.value = pass2.value = ''
     return 'Backup cifrato scaricato. Senza passphrase non si apre: segnatela.'
   })
@@ -213,6 +215,7 @@ function doImport() {
         <span>Ripeti</span>
         <input v-model="pass2" type="password" autocomplete="new-password" />
       </label>
+      <p class="small muted">Ultimo backup: {{ settings.lastBackupAt ? new Date(settings.lastBackupAt).toLocaleDateString('it-IT') : 'mai' }}.</p>
       <button class="primary" :disabled="busy === 'export' || pass1.length < 8" @click="doExport">Esporta backup</button>
       <p v-if="msg.export" class="banner small" :class="msg.export.kind" style="margin-top: 10px">{{ msg.export.text }}</p>
 
@@ -247,6 +250,7 @@ function doImport() {
     <section class="card">
       <RouterLink to="/regole">Regole, calendario e fonti →</RouterLink>
       <p class="small muted" style="margin-top: 8px">fiuto · tutto resta su questo dispositivo. Niente account, niente server, niente telemetria.</p>
+      <p class="small muted" data-testid="version">Versione {{ appVersion }}</p>
     </section>
   </div>
 </template>

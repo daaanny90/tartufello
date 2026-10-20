@@ -10,6 +10,7 @@ import { model } from '../field/model'
 import { formatDistance, formatDuration, trackLength } from '../lib/geo'
 import { location } from '../lib/geolocation'
 import { formatTime } from '../lib/sun'
+import { outingLabel } from '../lib/storage'
 import { calendar, formatDate, searchWindow } from '../rules/calendar'
 
 const props = defineProps<{ id: string }>()
@@ -53,6 +54,7 @@ onBeforeUnmount(() => {
 })
 
 const active = computed(() => !!outing.value && !outing.value.endedAt)
+const scouting = computed(() => outing.value?.kind === 'sopralluogo')
 const recording = computed(() => tracking.outingId === props.id)
 const now = ref(Date.now())
 const timer = setInterval(() => (now.value = Date.now()), 30_000)
@@ -90,7 +92,7 @@ async function finish() {
 
 async function resume() {
   await db.outings.update(props.id, { endedAt: undefined })
-  await startOuting()
+  await startOuting(outing.value?.kind)
 }
 
 async function removeFind(f: Find) {
@@ -112,9 +114,9 @@ async function removeOuting() {
   <div class="page" v-if="outing">
     <RouterLink to="/diario" class="small">← Diario</RouterLink>
     <div class="row spread" style="margin-top: 8px">
-      <h1>Uscita del {{ formatDate(new Date(outing.date)) }}</h1>
+      <h1>{{ outingLabel(outing.kind) }} del {{ formatDate(new Date(outing.date)) }}</h1>
       <span class="pill" :class="active ? 'warn' : finds.length ? 'ok' : 'neutral'">
-        {{ active ? 'in corso' : finds.length ? `${finds.length} trovati` : 'giro a vuoto' }}
+        {{ active ? 'in corso' : scouting ? 'sopralluogo' : finds.length ? `${finds.length} trovati` : 'giro a vuoto' }}
       </span>
     </div>
 
@@ -131,15 +133,16 @@ async function removeOuting() {
       </p>
       <div class="row" style="margin-top: 10px">
         <template v-if="active">
-          <button class="primary" @click="adding = true">Ritrovamento</button>
-          <button v-if="!recording" @click="startOuting()">Riprendi traccia</button>
+          <button v-if="!scouting" class="primary" @click="adding = true">Ritrovamento</button>
+          <RouterLink v-else class="btn primary" to="/campo">Valuta qui</RouterLink>
+          <button v-if="!recording" @click="startOuting(outing.kind)">Riprendi traccia</button>
           <button @click="finish">Termina uscita</button>
         </template>
         <button v-else class="ghost" @click="resume">Riapri</button>
       </div>
     </section>
 
-    <div v-if="active && outOfHours && hours" class="banner bad small">
+    <div v-if="active && !scouting && outOfHours && hours" class="banner bad small">
       Fuori orario: oggi si cerca dalle {{ formatTime(hours.from) }} alle {{ formatTime(hours.to) }}. {{ rules.night.text }}
     </div>
     <div v-if="dayGrams >= dayLimit" class="banner bad small">
@@ -151,7 +154,7 @@ async function removeOuting() {
 
     <FindForm v-if="adding" :outing-id="outing.id" @saved="adding = false" @cancel="adding = false" />
 
-    <section class="card">
+    <section v-if="!scouting || finds.length" class="card">
       <h2>Ritrovamenti</h2>
       <p v-if="!finds.length" class="muted small">Nessuno. Va registrata lo stesso: anche il vuoto serve alla calibrazione.</p>
       <ul class="list">
