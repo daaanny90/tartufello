@@ -1,0 +1,32 @@
+{
+  "id": "esche-avvelenate",
+  "title": "Esche e bocconi avvelenati",
+  "legalBasis": "Ordinanza del Ministro della Salute 8 agosto 2025, \"Disposizioni sul divieto di utilizzo e di detenzione di esche o di bocconi avvelenati\" (GU n. 212 del 12/09/2025)",
+  "verified": false,
+  "verificationNote": "Testo ufficiale non ancora letto: il 29/10/2026 Gazzetta Ufficiale e siti del Ministero non erano raggiungibili dall'ambiente di sviluppo. Gli obblighi qui sotto vengono da fonti secondarie e vanno confrontati con la GU.",
+  "validityNote": "Le ordinanze sulle esche sono temporanee e vengono prorogate di anno in anno. Una proroga di 12 mesi dal 28/08/2026 è riportata da un aggregatore, non confermata.",
+  "secondarySources": [
+    "https://certifico.com/news/ordinanza-8-agosto-2025",
+    "https://www.studiocataldi.it/articoli/36286-animali-ed-esche-avvelenate-le-nuove-regole.asp"
+  ],
+  "reporting": [
+    "Il proprietario di un animale avvelenato, o morto per sospetto avvelenamento, si rivolge a un medico veterinario.",
+    "Il veterinario che fa diagnosi di sospetto avvelenamento lo comunica subito al Sindaco e al Servizio veterinario dell'ASL.",
+    "Se l'animale muore, il veterinario manda le spoglie e i campioni all'Istituto zooprofilattico per le analisi."
+  ],
+  "firstAid": {
+    "note": "Indicazioni generali di primo intervento, non un parere veterinario: decide il veterinario al telefono.",
+    "steps": [
+      "Allontana il cane e togligli dalla bocca quello che riesci, senza farti mordere.",
+      "Chiama subito il veterinario o la clinica h24, anche se il cane sembra stare bene: alcuni veleni agiscono dopo ore o giorni.",
+      "Non provocare il vomito e non dargli niente (latte, olio, sale) se non te lo dice il veterinario.",
+      "Porta al veterinario quello che ha mangiato, o un pezzo, in un sacchetto e senza toccarlo a mani nude. Fai una foto.",
+      "Segna il punto: serve per la segnalazione, e a te per non tornarci."
+    ]
+  },
+  "baitFound": [
+    "Non toccarla a mani nude e tieni lontano il cane.",
+    "Fotografala e segna il punto.",
+    "Segnalala al Servizio veterinario dell'ASL o al Comune: sono loro che fanno bonificare l'area."
+  ]
+}

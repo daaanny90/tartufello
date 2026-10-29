@@ -167,6 +167,41 @@ try {
   await page.locator('[data-testid=nav]').getByText(/verso (N|NE|E|SE|S|SO|O|NO)/).waitFor()
   await shot('09-spot-qui')
 
+  step = 'segna pericolo'
+  const mapBox = await page.locator('[data-testid=map]').boundingBox()
+  // Sopra lo spot appena salvato (al centro) e sopra la scheda, che copre la parte bassa.
+  await page.mouse.click(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height * 0.3)
+  await page.getByRole('button', { name: 'Segna pericolo' }).click()
+  await page.locator('[data-testid=hazard-pick]').getByRole('button', { name: 'Cartello di avviso' }).click()
+  await page.locator('[data-testid=sheet]').getByText(/Pericolo: cartello di avviso/).waitFor()
+
+  step = 'emergenza'
+  const esca = { latitude: 44.66, longitude: 10.07, accuracy: 6 }
+  await context.setGeolocation(esca)
+  await page.goto(`${BASE}/emergenza`)
+  await page.getByText(/Nessun numero salvato/).waitFor()
+  await page.locator('label', { hasText: /^Veterinario$/ }).locator('input').fill('0521 123456')
+  await page.getByRole('button', { name: 'Fatto' }).click()
+  const tel = await page.getByRole('link', { name: /Veterinario/ }).getAttribute('href')
+  check(tel === 'tel:0521123456', `numero del veterinario: ${tel}`)
+  await page.getByRole('button', { name: 'Segna qui il pericolo' }).click()
+  await page.getByText(/Segnato\. Apri lo spot/).waitFor()
+  await shot('10-emergenza')
+
+  step = 'avviso pericolo'
+  await page.goto(`${BASE}/mappa`)
+  const alert = page.locator('[data-testid=danger-alert]')
+  await alert.getByText(/Pericolo a \d+ m/).waitFor()
+  await shot('11-avviso-pericolo')
+  await page.getByRole('button', { name: 'Chiudi avviso' }).click()
+  check(!(await alert.count()), 'l\'avviso non si chiude')
+  // Mi allontano oltre la soglia di riarmo e torno: deve riavvisare.
+  await context.setGeolocation({ ...esca, latitude: esca.latitude + 0.006 })
+  await page.waitForTimeout(800)
+  check(!(await alert.count()), 'avviso rimasto lontano dal pericolo')
+  await context.setGeolocation({ ...esca, latitude: esca.latitude + 0.001 })
+  await alert.getByText(/Pericolo a \d+ m/).waitFor()
+
   step = 'sopralluogo'
   await page.goto(`${BASE}/`)
   await page.getByRole('button', { name: 'Sopralluogo' }).click()
@@ -189,7 +224,7 @@ try {
   await page.locator('label', { hasText: 'File .fiuto' }).locator('input').setInputFiles(file)
   await page.locator('label', { hasText: /^Passphrase$/ }).locator('input').fill('lagotto-2027')
   await page.getByRole('button', { name: 'Ripristina' }).click()
-  await page.getByText(/Importati: 2 uscite, 1 ritrovamenti, 2 spot, 1 valutazioni/).waitFor()
+  await page.getByText(/Importati: 2 uscite, 1 ritrovamenti, 4 spot, 1 valutazioni/).waitFor()
 
   step = 'regole'
   await page.goto(`${BASE}/regole`)

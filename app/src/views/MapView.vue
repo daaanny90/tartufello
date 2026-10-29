@@ -6,7 +6,8 @@ import { liveQuery, type Subscription } from 'dexie'
 import type { Feature, FeatureCollection } from 'geojson'
 import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { db, newId, nowIso, type Find, type Spot } from '../diary/db'
+import { DANGER_RADIUS_M } from '../diary/danger'
+import { db, HAZARD_LABELS, newId, nowIso, type Find, type Hazard, type Spot } from '../diary/db'
 import { tracking } from '../diary/outings'
 import { model, param, REMOTE_PARAMS, type ParamId } from '../field/model'
 import { remoteClass } from '../field/vth'
@@ -43,6 +44,8 @@ const ui = reactive({
   follow: false,
   view: { kind: 'score' } as ScoreView,
   newSpotName: '',
+  /** Scelta del tipo di pericolo prima di salvare. */
+  dangerPick: false,
   /** Letture GPS in corso per "spot qui". */
   fixing: null as null | { count: number; acc: number | null },
   fixError: '',
@@ -126,6 +129,17 @@ function spotsData() {
   )
 }
 
+/** Il raggio dell'avviso intorno a ogni pericolo: si vede da dove scatta. */
+function dangerData() {
+  return fc(
+    spots.value.flatMap((s): Feature[] =>
+      s.kind === 'pericolo' && s.geom.type === 'Point'
+        ? [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [circle(s.geom.coordinates as [number, number], DANGER_RADIUS_M)] }, properties: { id: s.id } }]
+        : [],
+    ),
+  )
+}
+
 function findsData() {
   return fc(finds.value.map((f) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: f.position }, properties: { id: f.id, species: f.species } })))
 }
@@ -158,9 +172,12 @@ function addOverlays(m: MlMap) {
   const empty = fc([])
   m.addSource('track', { type: 'geojson', data: empty })
   m.addSource('spots', { type: 'geojson', data: empty })
+  m.addSource('danger', { type: 'geojson', data: empty })
   m.addSource('finds', { type: 'geojson', data: empty })
   m.addSource('me', { type: 'geojson', data: empty })
   m.addLayer({ id: 'track-line', type: 'line', source: 'track', paint: { 'line-color': '#7b3fa0', 'line-width': 3, 'line-opacity': 0.85 } })
+  m.addLayer({ id: 'danger-fill', type: 'fill', source: 'danger', paint: { 'fill-color': '#e65100', 'fill-opacity': 0.1 } })
+  m.addLayer({ id: 'danger-line', type: 'line', source: 'danger', paint: { 'line-color': '#e65100', 'line-width': 1.5, 'line-dasharray': [3, 2] } })
   m.addLayer({
     id: 'finds-circle',
     type: 'circle',
@@ -173,8 +190,8 @@ function addOverlays(m: MlMap) {
     source: 'spots',
     paint: {
       'circle-radius': 8,
-      'circle-color': ['match', ['get', 'kind'], 'riservato', '#b3261e', '#2f6fb3'],
-      'circle-stroke-color': '#ffffff',
+      'circle-color': ['match', ['get', 'kind'], 'riservato', '#b3261e', 'pericolo', '#e65100', '#2f6fb3'],
+      'circle-stroke-color': ['match', ['get', 'kind'], 'pericolo', '#1b1714', '#ffffff'],
       'circle-stroke-width': 2,
     },
   })
@@ -196,6 +213,7 @@ function addOverlays(m: MlMap) {
   })
   addScore(m)
   setData('spots', spotsData())
+  setData('danger', dangerData())
   setData('finds', findsData())
   setData('track', trackData())
   setData('me', meData())
@@ -236,6 +254,8 @@ watch(
   () => [settings.basemap, mapFiles.basemap, mapFiles.rilievo],
   () => map.value?.setStyle(baseStyle(settings.basemap, mapFiles), { diff: false }),
 )
+
+watch(selection, () => (ui.dangerPick = false))
 
 watch(
   () => mapFiles.score,
@@ -307,6 +327,7 @@ onMounted(() => {
     liveQuery(() => db.spots.toArray()).subscribe((s) => {
       spots.value = s
       setData('spots', spotsData())
+      setData('danger', dangerData())
     }),
     liveQuery(() => db.finds.toArray()).subscribe((f) => {
       finds.value = f
@@ -349,13 +370,20 @@ onBeforeUnmount(() => {
   removeProtocol('pmtiles')
 })
 
-async function saveSpot(kind: Spot['kind']) {
+function defaultName(kind: Spot['kind'], hazard?: Hazard) {
+  if (kind === 'riservato') return 'Tartufaia riservata'
+  if (kind === 'pericolo') return HAZARD_LABELS[hazard ?? 'esca']
+  return `Spot ${new Date().toLocaleDateString('it-IT')}`
+}
+
+async function saveSpot(kind: Spot['kind'], hazard?: Hazard) {
   const sel = selection.value
   if (!sel) return
   const spot: Spot = {
     id: newId(),
-    name: ui.newSpotName.trim() || (kind === 'riservato' ? 'Tartufaia riservata' : `Spot ${new Date().toLocaleDateString('it-IT')}`),
+    name: ui.newSpotName.trim() || defaultName(kind, hazard),
     kind,
+    ...(hazard ? { hazard } : {}),
     geom: { type: 'Point', coordinates: [sel.lngLat[0], sel.lngLat[1]] },
     remote: sel.remote ? plain({ score: sel.remote.score, n: sel.remote.n, points: sel.remote.points }) : undefined,
     createdAt: nowIso(),
@@ -424,6 +452,9 @@ const legend = computed(() => {
       <button class="ctl" :class="{ on: ui.layersOpen }" aria-label="Livelli" @click="ui.layersOpen = !ui.layersOpen">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 9 5-9 5-9-5 9-5zM3 13l9 5 9-5" /></svg>
       </button>
+      <RouterLink class="btn ctl sos" to="/emergenza" aria-label="Emergenza cane">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M9.5 3h5v6.5H21v5h-6.5V21h-5v-6.5H3v-5h6.5z" /></svg>
+      </RouterLink>
     </div>
 
     <div v-if="ui.layersOpen" class="panel layers">
@@ -463,6 +494,11 @@ const legend = computed(() => {
         <span class="small muted">GPS ±{{ Math.round(nav.acc) }} m</span>
       </div>
       <div v-if="selection.spot?.kind === 'riservato'" class="banner bad small" style="margin: 8px 0">Tartufaia riservata: off-limits.</div>
+      <div v-if="selection.spot?.kind === 'pericolo'" class="banner bad small" style="margin: 8px 0">
+        Pericolo<template v-if="selection.spot.hazard">: {{ HAZARD_LABELS[selection.spot.hazard].toLowerCase() }}</template>, segnato il
+        {{ new Date(selection.spot.createdAt).toLocaleDateString('it-IT') }}. L'app avvisa entro {{ DANGER_RADIUS_M }} m.
+        <RouterLink to="/emergenza">Emergenza</RouterLink>
+      </div>
 
       <template v-if="selection.remote">
         <div class="row" style="margin: 8px 0">
@@ -493,7 +529,11 @@ const legend = computed(() => {
         <div class="row">
           <button @click="saveSpot('interesse')">Salva spot</button>
           <button class="danger" @click="saveSpot('riservato')">Segna riservata</button>
+          <button class="danger" @click="ui.dangerPick = !ui.dangerPick">Segna pericolo</button>
           <button class="primary" @click="assessHere">Valuta qui</button>
+        </div>
+        <div v-if="ui.dangerPick" class="chips" data-testid="hazard-pick">
+          <button v-for="(label, h) in HAZARD_LABELS" :key="h" class="chip" @click="saveSpot('pericolo', h)">{{ label }}</button>
         </div>
       </div>
       <div v-else class="row" style="margin-top: 10px">
@@ -548,6 +588,12 @@ const legend = computed(() => {
 
 .ctl.on {
   color: #1e88e5;
+}
+
+.sos {
+  min-height: 0;
+  border: none;
+  color: var(--bad);
 }
 
 .panel {

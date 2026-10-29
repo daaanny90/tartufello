@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
+import DangerAlert from './components/DangerAlert.vue'
 import { tracking } from './diary/outings'
 
 const route = useRoute()
@@ -20,6 +21,7 @@ const tabs = [
     <RouterLink v-if="tracking.outingId" :to="`/diario/uscita/${tracking.outingId}`" class="recording">
       <span class="dot" /> Uscita in corso · {{ tracking.points }} punti traccia
     </RouterLink>
+    <DangerAlert :class="{ first: !tracking.outingId }" />
     <main class="content">
       <RouterView v-slot="{ Component }">
         <KeepAlive include="MapView">
@@ -66,6 +68,10 @@ const tabs = [
   font-size: 0.9rem;
   font-weight: 600;
   text-decoration: none;
+}
+
+.first {
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
 }
 
 .dot {

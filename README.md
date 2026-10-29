@@ -6,7 +6,7 @@ App personale per decidere **dove portare il cane a cercare tartufo nero** (*Tub
 
 - [`model/vth-v2.json`](model/vth-v2.json): il modello Virtual Truffle Hunting adattato all'Appennino, condiviso da pipeline e app.
 - [`pipeline/`](pipeline/README.md): dai dati regionali alla mappa di idoneità e alla mappa di base offline (`.pmtiles`).
-- [`app/`](app/README.md): la PWA da usare in bosco. Calendario, mappa offline, checklist sul posto, diario, backup cifrato.
+- [`app/`](app/README.md): la PWA da usare in bosco. Calendario, mappa offline, checklist sul posto, diario, backup cifrato, pericoli (esche) con avviso di vicinanza e scheda Emergenza.
 
 Tutto resta sul telefono: niente account, niente server, niente telemetria. Il modello restringe le zone, l'ultimo metro lo fa il cane.
 
@@ -50,8 +50,9 @@ Tutti i dati cartografici sono open data della **Regione Emilia-Romagna**, verif
 | Database topografico regionale (DBTR) | strade, corsi d'acqua, località della mappa offline | CC BY 4.0 (sentieri DBTR: CC BY 3.0) | scaricato da un servizio pubblico ArcGIS: da chiedere alla Regione se è un canale ammesso |
 | Calendario raccolta 2026-2030 (DGR 137/2026) | aperto/chiuso per specie, sospensioni | atto pubblico | confrontato con il PDF ufficiale |
 | L.R. 24/1991, testo coordinato | orari, limite di 1 kg, cani, aree faunistiche | atto pubblico | testo non ufficiale: fa fede il Bollettino |
+| Ordinanza del Ministro della Salute 8/8/2025 sulle esche avvelenate | obblighi di segnalazione nella scheda Emergenza | atto pubblico | letta solo da fonti secondarie: **da verificare** sulla Gazzetta |
 
-Ancora **non usati**: la carta raster del pH a 100 m (MinERva), i confini degli istituti faunistici e la carta del tartufo bianco (CAPP). I primi due stanno su host che l'ambiente cloud di sviluppo non raggiunge; per la CAPP non c'è un download pubblico.
+Ancora **non usati**: la carta raster del pH a 100 m (MinERva), i confini degli istituti faunistici e la carta del tartufo bianco (CAPP). I primi due stanno su host che l'ambiente cloud di sviluppo non raggiunge; per la CAPP non c'è un download pubblico. Nemmeno dati pubblici sugli avvelenamenti di animali: i pericoli in mappa sono solo quelli segnati da te.
 
 Altro:
 

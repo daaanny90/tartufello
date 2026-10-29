@@ -93,6 +93,7 @@ async function newOuting() {
             <div class="row spread">
               <strong>{{ s.name }}</strong>
               <span v-if="s.kind === 'riservato'" class="pill no">riservata</span>
+              <span v-else-if="s.kind === 'pericolo'" class="pill warn">pericolo</span>
               <span
                 v-else-if="lastAssessment.get(s.id)?.result.classId"
                 class="pill"

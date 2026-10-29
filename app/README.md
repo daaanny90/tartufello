@@ -31,12 +31,12 @@ In alternativa va bene qualsiasi hosting statico in HTTPS (service worker e GPS 
 
 | Cartella | Cosa fa |
 |---|---|
-| `src/rules/` | Calendario ER 2026-2030 come dati (`er-calendar-2026-2030.json`) e calcolo aperto/chiuso per specie e zona |
+| `src/rules/` | Calendario ER 2026-2030 come dati (`er-calendar-2026-2030.json`) e calcolo aperto/chiuso per specie e zona; esche avvelenate (`esche-avvelenate.json`): primo intervento e obblighi di segnalazione, ancora da verificare |
 | `src/field/` | Motore VTH: legge `../model/vth-v2.json`, combina osservazioni di campo e punti della mappa, scala a 36 |
 | `src/map/` | Stile MapLibre, file PMTiles in IndexedDB letti con `FileSource`, lettura dello score in un punto senza mappa |
-| `src/diary/` | Database Dexie (spot, valutazioni, uscite, ritrovamenti), registrazione traccia GPS |
+| `src/diary/` | Database Dexie (spot, valutazioni, uscite, ritrovamenti), registrazione traccia GPS, avviso vicino agli spot pericolo (`danger.ts`) |
 | `src/backup/` | Backup cifrato: PBKDF2-SHA256 (600k iterazioni) + AES-GCM 256, gzip, foto incluse |
-| `src/views/` | Oggi, Mappa, Campo, Diario, Uscita, Spot, Regole, Altro |
+| `src/views/` | Oggi, Mappa, Campo, Diario, Uscita, Spot, Regole, Emergenza, Altro |
 | `public/basemap/` | Font e sprite per la basemap offline Protomaps (licenze nel README della cartella) |
 
 ## Scelte da sapere
@@ -45,5 +45,6 @@ In alternativa va bene qualsiasi hosting statico in HTTPS (service worker e GPS 
 - **Il campo vince sulla mappa.** Ogni parametro osservato sostituisce la stima remota. Il totale si riporta a 36 sul massimo ottenibile con i parametri presenti; sotto 8 parametri la classe è provvisoria (`model.field.minParamsForClass`).
 - **Basemap online = qualcuno vede dove guardi.** OpenTopoMap e OSM ricevono le richieste delle tessere. Le tessere viste restano in cache (al massimo 3000, 30 giorni), senza scaricamenti massivi. Per la privacy vera serve la basemap offline.
 - **La traccia si registra con l'app aperta.** Il wake lock tiene lo schermo acceso se il telefono lo supporta. A schermo bloccato il browser può fermare il GPS: è un limite delle PWA, non un bug.
+- **Avviso pericolo.** Scatta entro 300 m da uno spot "pericolo" e si riarma solo oltre 400 m, così il GPS che balla non fa vibrare a ripetizione. Ignora le letture peggiori di 200 m. Gira finché il GPS è acceso (uscita o mappa aperta). Uno spot appena segnato dove sei entra in silenzio.
 - **Foto senza EXIF.** Le foto dei ritrovamenti si ridimensionano a 1600 px e si ricodificano: il GPS nei metadati sparisce.
 - **Dati Vue → IndexedDB.** Prima di scrivere, gli oggetti reattivi passano da `plain()`: IndexedDB non sa clonare i Proxy.

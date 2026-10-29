@@ -13,11 +13,24 @@ export const SPECIES_LABELS: Record<Species, string> = {
   other: 'Altro',
 }
 
-/** Punto o area di interesse. "riservato" = tartufaia coltivata/controllata con tabella: off-limits. */
+/** Cosa ha fatto segnare un pericolo. */
+export type Hazard = 'esca' | 'cartello' | 'sentito'
+
+export const HAZARD_LABELS: Record<Hazard, string> = {
+  esca: 'Esca trovata',
+  cartello: 'Cartello di avviso',
+  sentito: 'Cane avvelenato, sentito dire',
+}
+
+/**
+ * Punto o area di interesse. "riservato" = tartufaia coltivata/controllata con tabella: off-limits.
+ * "pericolo" = esche o avvelenamenti: l'app avvisa quando ci si avvicina.
+ */
 export interface Spot {
   id: string
   name: string
-  kind: 'interesse' | 'riservato'
+  kind: 'interesse' | 'riservato' | 'pericolo'
+  hazard?: Hazard
   geom: Point | Polygon
   /** Punti remoti letti dalla mappa al momento del salvataggio. */
   remote?: { score?: number; n?: number; points: RemotePoints }

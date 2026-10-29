@@ -12,6 +12,10 @@ export interface Settings {
   wakeLock: boolean
   /** ISO dell'ultimo backup esportato, '' se mai. */
   lastBackupAt: string
+  /** Numeri per la scheda Emergenza: restano sul telefono. */
+  vetPhone: string
+  clinicPhone: string
+  aslPhone: string
 }
 
 const DEFAULTS: Settings = {
@@ -21,6 +25,9 @@ const DEFAULTS: Settings = {
   licenseNumber: '',
   wakeLock: true,
   lastBackupAt: '',
+  vetPhone: '',
+  clinicPhone: '',
+  aslPhone: '',
 }
 
 export const settings = reactive<Settings>({ ...DEFAULTS })

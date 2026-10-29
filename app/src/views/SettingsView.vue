@@ -272,6 +272,8 @@ function doImport() {
 
     <section class="card">
       <RouterLink to="/regole">Regole, calendario e fonti →</RouterLink>
+      <br />
+      <RouterLink to="/emergenza">Emergenza cane e numeri del veterinario →</RouterLink>
       <p class="small muted" style="margin-top: 8px">fiuto · tutto resta su questo dispositivo. Niente account, niente server, niente telemetria.</p>
       <p class="small muted" data-testid="version">Versione {{ appVersion }}</p>
     </section>

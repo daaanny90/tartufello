@@ -11,6 +11,7 @@ export const router = createRouter({
     { path: '/diario/uscita/:id', name: 'uscita', component: () => import('./views/OutingView.vue'), props: true },
     { path: '/diario/spot/:id', name: 'spot', component: () => import('./views/SpotView.vue'), props: true },
     { path: '/regole', name: 'regole', component: () => import('./views/RulesView.vue') },
+    { path: '/emergenza', name: 'emergenza', component: () => import('./views/EmergencyView.vue') },
     { path: '/impostazioni', name: 'impostazioni', component: () => import('./views/SettingsView.vue') },
   ],
 })

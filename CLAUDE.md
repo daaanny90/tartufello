@@ -32,6 +32,7 @@ Prima di un push: i test della parte toccata devono passare; se tocchi `model/`,
 
 - App (Fase 1 lato app e Fase 2): fatta e testata, pubblicata su https://daaanny90.github.io/tartufello/ (repo pubblico dal 20/10/2026). Calendario verificato sulla delibera, regole della L.R. 24/1991 come dati.
 - Pronta per il test sul campo (autunno 2026 - primavera 2027): mappa di base offline regionale (rilievo, curve, sentieri), spot col GPS mediato, ritorno agli spot, sopralluoghi. Guida per Danny in `CAMPO.md`. A primavera si riprende lo score.
+- Esche avvelenate: spot "pericolo" con avviso di vicinanza e scheda Emergenza. Obblighi di segnalazione in `app/src/rules/esche-avvelenate.json`, ancora **[da verificare]** sulla Gazzetta (BRIEF §12).
 - Pipeline: Fase 0 fatta (esiti in `BRIEF.md` §12 e `pipeline/FASE0.md`), modello vth-v2. Score reale della Val Baganza pubblicato con l'app (`app/public/mappe/`). Distingue poco: un quarto del bosco con score vale esattamente 1. La roccia madre è classificata solo sul 18% e alcune righe di lookup sono ancora BOZZA.
 - Host ancora bloccati dal proxy dell'ambiente cloud: `agri.regione.emilia-romagna.it` (istituti faunistici, CAPP) e `datacatalog.regione.emilia-romagna.it` (raster del pH). Vanno aggiunti agli Allowed domains o scaricati a mano.
 

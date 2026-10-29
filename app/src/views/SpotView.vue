@@ -3,7 +3,8 @@ import { liveQuery, type Subscription } from 'dexie'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import AssessmentSummary from '../components/AssessmentSummary.vue'
-import { db, type FieldAssessment, type Find, type Outing, type Spot } from '../diary/db'
+import { DANGER_RADIUS_M } from '../diary/danger'
+import { db, HAZARD_LABELS, type FieldAssessment, type Find, type Hazard, type Outing, type Spot } from '../diary/db'
 import { VISIT_RADIUS_M } from '../diary/outings'
 import { param, REMOTE_PARAMS } from '../field/model'
 import { assess, remoteClass } from '../field/vth'
@@ -44,7 +45,15 @@ async function rename(name: string) {
 }
 
 async function setKind(kind: Spot['kind']) {
-  await db.spots.update(props.id, { kind })
+  await db.spots.update(props.id, kind === 'pericolo' && !spot.value?.hazard ? { kind, hazard: 'esca' } : { kind })
+}
+
+async function setHazard(hazard: Hazard) {
+  await db.spots.update(props.id, { hazard })
+}
+
+async function setNotes(notes: string) {
+  await db.spots.update(props.id, { notes: notes.trim() || undefined })
 }
 
 async function remove() {
@@ -62,6 +71,10 @@ async function remove() {
     <RouterLink to="/diario" class="small">← Diario</RouterLink>
     <h1 style="margin-top: 8px">{{ spot.name }}</h1>
     <div v-if="spot.kind === 'riservato'" class="banner bad">Tartufaia coltivata o controllata: raccolta riservata, off-limits.</div>
+    <div v-if="spot.kind === 'pericolo'" class="banner bad">
+      Pericolo per il cane. Con il GPS acceso l'app avvisa e vibra entro {{ DANGER_RADIUS_M }} m.
+      <RouterLink to="/emergenza">Cosa fare in emergenza</RouterLink>
+    </div>
 
     <section class="card">
       <div class="small muted" v-if="coords">{{ formatCoord(coords) }}</div>
@@ -72,7 +85,15 @@ async function remove() {
       <div class="chips">
         <button class="chip" :class="{ on: spot.kind === 'interesse' }" @click="setKind('interesse')">Di interesse</button>
         <button class="chip" :class="{ on: spot.kind === 'riservato' }" @click="setKind('riservato')">Riservata (off-limits)</button>
+        <button class="chip" :class="{ on: spot.kind === 'pericolo' }" @click="setKind('pericolo')">Pericolo (esche)</button>
       </div>
+      <div v-if="spot.kind === 'pericolo'" class="chips" style="margin-top: 8px">
+        <button v-for="(label, h) in HAZARD_LABELS" :key="h" class="chip" :class="{ on: spot.hazard === h }" @click="setHazard(h)">{{ label }}</button>
+      </div>
+      <label class="field" style="margin-top: 12px">
+        <span>Note</span>
+        <textarea :value="spot.notes ?? ''" :placeholder="spot.kind === 'pericolo' ? 'es. polpetta vicino alla sbarra, segnalata all\'ASL il…' : ''" @change="setNotes(($event.target as HTMLTextAreaElement).value)" />
+      </label>
       <div class="row" style="margin-top: 12px">
         <RouterLink class="btn primary" :to="{ path: '/campo', query: { spot: spot.id } }">Nuova valutazione</RouterLink>
         <RouterLink v-if="coords" class="btn" :to="{ path: '/mappa', query: { spot: spot.id, lon: coords[0], lat: coords[1], z: 16 } }">Portami qui</RouterLink>

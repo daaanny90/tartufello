@@ -137,6 +137,7 @@ async function removeOuting() {
           <RouterLink v-else class="btn primary" to="/campo">Valuta qui</RouterLink>
           <button v-if="!recording" @click="startOuting(outing.kind)">Riprendi traccia</button>
           <button @click="finish">Termina uscita</button>
+          <RouterLink class="btn sos" to="/emergenza">Emergenza</RouterLink>
         </template>
         <button v-else class="ghost" @click="resume">Riapri</button>
       </div>
@@ -204,6 +205,12 @@ async function removeOuting() {
 </template>
 
 <style scoped>
+.sos {
+  color: var(--bad);
+  border-color: var(--bad);
+  background: transparent;
+}
+
 .thumb {
   width: 56px;
   height: 56px;

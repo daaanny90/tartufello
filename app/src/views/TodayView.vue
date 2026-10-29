@@ -49,8 +49,9 @@ async function go(kind: OutingKind) {
   <div class="page">
     <div class="row spread">
       <h1>fiuto</h1>
-      <span class="muted small">{{ formatDate(today) }} · {{ zoneLabel }}</span>
+      <RouterLink class="btn sos" to="/emergenza">Emergenza cane</RouterLink>
     </div>
+    <p class="muted small">{{ formatDate(today) }} · {{ zoneLabel }}</p>
 
     <div v-if="!status.inValidity" class="banner bad">
       Il calendario caricato vale per il {{ calendar.validYears.from }}-{{ calendar.validYears.to }}. Oggi è fuori: controlla la delibera nuova.
@@ -138,6 +139,16 @@ async function go(kind: OutingKind) {
 </template>
 
 <style scoped>
+.sos {
+  min-height: 36px;
+  padding: 6px 12px;
+  color: var(--bad);
+  border-color: var(--bad);
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .hero .state {
   font-size: 2.2rem;
   font-weight: 800;

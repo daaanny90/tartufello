@@ -242,6 +242,13 @@ Prese costruendo la prima versione. Dove si discostano dal resto del brief, valg
 - **Parchi e aree pubbliche** (art. 21): nei parchi regionali e nelle riserve valgono atti istitutivi e regolamenti propri; nelle aree pubbliche gli enti possono limitare giorni e accessi.
 - Fonte delle regole: testo coordinato non ufficiale della L.R. 24/1991 (modifiche fino alla L.R. 17/2016), URL in §10, letto il 20/10/2026.
 
+### Esche avvelenate (29/10/2026)
+
+- In app (fuori dal brief iniziale, chiesto da Danny): spot privati di tipo "pericolo" (esca trovata, cartello, avvelenamento sentito dire), avviso con vibrazione entro 300 m quando il GPS è acceso, scheda Emergenza con i numeri salvati dall'utente e cosa fare.
+- Obblighi di segnalazione: Ordinanza del Ministro della Salute 8 agosto 2025 (GU n. 212 del 12/09/2025), letta solo da fonti secondarie (certifico.com, studiocataldi.it). **[da verificare]** sul testo in Gazzetta, non raggiungibile dall'ambiente cloud. Una proroga di 12 mesi dal 28/08/2026 è riportata da un aggregatore: **[da verificare]**. Dati in `app/src/rules/esche-avvelenate.json`.
+- Le indicazioni di primo intervento nella scheda sono generiche e dichiarate come non veterinarie.
+- Dati pubblici sugli avvelenamenti (portale nazionale degli Istituti zooprofilattici): esistenza, accesso e licenza **[da verificare]**, host non raggiungibile da qui. Per ora contano solo i pericoli segnati dall'utente.
+
 ### Dati: esiti della verifica (20/10/2026)
 
 Dettagli, metodo e decisioni aperte in `pipeline/FASE0.md`; valori verificati in `pipeline/sources.toml`.
